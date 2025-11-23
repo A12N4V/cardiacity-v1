@@ -519,8 +519,8 @@ export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, 
         }}
         dpr={[1, 2]}
       >
-        <color attach="background" args={["#1a1a1a"]} />
-        <fog attach="fog" args={["#1a1a1a", 200, 600]} />
+        <color attach="background" args={["#000000"]} />
+        <fog attach="fog" args={["#000000", 200, 600]} />
         <Scene
           beatTimes={beatTimes}
           isPlaying={isPlaying}
