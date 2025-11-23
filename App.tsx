@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ECGPlot, { PointDetails } from './components/ECGPlot';
+import Heart3D from './components/Heart3D';
 import { Heart, Activity, BrainCircuit, Waves, Info, MonitorPlay, Crosshair, Play, Pause, ChartBar, Stethoscope, Zap } from 'lucide-react';
 import { ECGStatistics, getSegmentDescription, getHRVStatus } from './lib/ecgUtils';
 
@@ -524,24 +525,13 @@ const App: React.FC = () => {
         {/* === SECTION 2: 3D VISUALIZATION === */}
         {/* Mobile: 40% Height (Top) | Desktop: 50% Width (Right) */}
         <div className="h-[40%] lg:h-full lg:w-1/2 order-1 lg:order-2 bg-black flex flex-col relative overflow-hidden shrink-0">
-             
-             {/* Background Effects */}
-             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(6,182,212,0.08),_transparent_70%)]"></div>
-             <div className="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
 
              {/* 3D Heart Container */}
-             <div className="flex-1 flex items-center justify-center relative z-10 p-8 overflow-hidden">
-                 <div className={`relative transition-transform duration-100 ease-out ${activeBeat ? 'scale-110' : 'scale-100'}`}>
-                    <div className={`absolute inset-0 blur-3xl rounded-full transition-opacity duration-100 ${activeBeat ? 'bg-red-600/30 opacity-100' : 'bg-transparent opacity-0'}`}></div>
-                    
-                    <Heart 
-                        className={`w-32 h-32 md:w-48 md:h-48 lg:w-64 lg:h-64 transition-colors duration-100 ${activeBeat ? 'text-red-500 fill-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.8)]' : 'text-gray-800 fill-gray-950'}`} 
-                        strokeWidth={0.5} 
-                    />
-                    <Heart 
-                        className={`absolute inset-0 w-32 h-32 md:w-48 md:h-48 lg:w-64 lg:h-64 text-transparent stroke-white/50 stroke-1 transition-all duration-1000 ${activeBeat ? 'opacity-0 scale-150' : 'opacity-0 scale-100'}`} 
-                    />
-                 </div>
+             <div className="flex-1 relative z-10 overflow-hidden">
+                 <Heart3D
+                   beatTimes={beatTimestamps.map(t => Date.now() + (t - cursorTimestamp) * 1000)}
+                   isPlaying={isPlaying}
+                 />
              </div>
 
              {/* 3D Status Overlay */}
