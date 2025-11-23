@@ -1,0 +1,4 @@
+{
+  "name": "ECG Visualizer & Beat Detector",
+  "description": "A medical-grade ECG visualization tool that parses CSV data, graphs voltage over time, and detects R-peaks (heartbeats) for synchronization."
+}
