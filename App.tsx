@@ -603,30 +603,30 @@ const App: React.FC = () => {
 
                return (
                  <div className="absolute inset-0 z-30 pointer-events-none">
-                   {/* SVG for drawing lines */}
+                   {/* SVG for drawing sleek leader lines */}
                    <svg className="absolute inset-0 w-full h-full pointer-events-none">
                      {heartLabels.map((label, idx) => {
                        const { labelX, labelY } = labelPositions[idx];
 
                        return (
                          <g key={`line-group-${idx}`}>
-                           {/* Leader line */}
+                           {/* Sleek leader line */}
                            <line
                              x1={label.position2D.x}
                              y1={label.position2D.y}
                              x2={labelX}
                              y2={labelY}
-                             stroke="rgba(255, 255, 255, 0.9)"
-                             strokeWidth="2"
+                             stroke="rgba(255, 255, 255, 0.6)"
+                             strokeWidth="1.5"
                              strokeLinecap="round"
                            />
                            {/* Small dot at 3D point */}
                            <circle
                              cx={label.position2D.x}
                              cy={label.position2D.y}
-                             r="3"
-                             fill="rgba(6, 182, 212, 1)"
-                             stroke="white"
+                             r="2.5"
+                             fill="rgba(255, 255, 255, 0.9)"
+                             stroke="rgba(255, 255, 255, 0.4)"
                              strokeWidth="1"
                            />
                          </g>
@@ -634,7 +634,7 @@ const App: React.FC = () => {
                      })}
                    </svg>
 
-                   {/* Labels (textbook style) */}
+                   {/* Labels (sleek minimal style - white only) */}
                    {heartLabels.map((label, idx) => {
                      const { labelX, labelY } = labelPositions[idx];
 
@@ -651,15 +651,12 @@ const App: React.FC = () => {
                            top: `${labelY}px`,
                            transform: isLeftSide ? 'translate(10px, -50%)' : 'translate(-100%, -50%)',
                            textAlign: textAlign,
-                           maxWidth: '180px'
+                           maxWidth: '220px'
                          }}
                        >
-                         {/* Clean textbook-style label */}
-                         <div className="text-white text-sm font-semibold leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                         {/* Sleek white label - only component name */}
+                         <div className="text-white text-base font-light tracking-wide leading-tight drop-shadow-[0_4px_16px_rgba(0,0,0,1)]">
                            {label.partInfo.name}
-                         </div>
-                         <div className="text-cardio-cyan text-[10px] font-medium uppercase tracking-wider mt-0.5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                           {label.partInfo.category}
                          </div>
                        </div>
                      );
