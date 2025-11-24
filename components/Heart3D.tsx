@@ -715,7 +715,7 @@ function CameraTracker({ onCameraUpdate }: { onCameraUpdate?: (pos: { x: number;
 }
 
 // Main 3D scene
-function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpdate, onPartClick }: Heart3DProps) {
+function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpdate, onPartClick, onShowAllLabels }: Heart3DProps) {
   const camPos = cameraPosition || { x: 0, y: 0, z: 300 };
   const camTarget = cameraTarget || { x: 0, y: 0, z: 0 };
 
