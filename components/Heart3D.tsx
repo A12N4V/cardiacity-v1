@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Environment, PerspectiveCamera } from "@react-three/drei";
+import { OrbitControls, Environment, PerspectiveCamera, Html } from "@react-three/drei";
 import { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
@@ -12,6 +12,7 @@ interface Heart3DProps {
   cameraTarget?: { x: number; y: number; z: number };
   onCameraUpdate?: (position: { x: number; y: number; z: number }) => void;
   onPartClick?: (partInfo: HeartPartInfo | null) => void;
+  selectedPart?: HeartPartInfo | null;
 }
 
 export interface HeartPartInfo {
@@ -366,8 +367,113 @@ function ElectricalImpulse({ isPlaying, beatTimes }: { isPlaying: boolean; beatT
   );
 }
 
+// Label component with sleek line pointing to part
+interface LabelProps {
+  partInfo: HeartPartInfo;
+  targetPosition: THREE.Vector3;
+  onClose: () => void;
+}
+
+function PartLabel({ partInfo, targetPosition, onClose }: LabelProps) {
+  const lineRef = useRef<THREE.Line>(null);
+  const labelPosition = targetPosition.clone();
+
+  // Calculate label position - offset from the target
+  const offsetDistance = 80;
+  const offsetDirection = new THREE.Vector3(1, 0.5, 1).normalize();
+  labelPosition.add(offsetDirection.multiplyScalar(offsetDistance));
+
+  // Create line geometry from target to label
+  const points = [
+    targetPosition,
+    labelPosition
+  ];
+  const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+
+  // Animate line appearance
+  useEffect(() => {
+    if (lineRef.current) {
+      const material = lineRef.current.material as THREE.LineBasicMaterial;
+      gsap.fromTo(material,
+        { opacity: 0 },
+        { opacity: 0.8, duration: 0.3, ease: "power2.out" }
+      );
+    }
+  }, []);
+
+  return (
+    <>
+      {/* Sleek line pointing to the part */}
+      <line ref={lineRef} geometry={lineGeometry}>
+        <lineBasicMaterial
+          color="#06b6d4"
+          linewidth={2}
+          transparent
+          opacity={0.8}
+        />
+      </line>
+
+      {/* Small dot at target position */}
+      <mesh position={targetPosition}>
+        <sphereGeometry args={[1.5, 16, 16]} />
+        <meshBasicMaterial color="#06b6d4" />
+      </mesh>
+
+      {/* HTML Label */}
+      <Html position={labelPosition} center distanceFactor={10}>
+        <div className="pointer-events-auto" style={{ width: '280px' }}>
+          <div className="bg-black/95 backdrop-blur-xl border border-cyan-500/40 rounded-lg shadow-[0_0_20px_rgba(6,182,212,0.3)] p-3 text-white">
+            {/* Header with close button */}
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-cyan-400 mb-1 leading-tight">
+                  {partInfo.name}
+                </h3>
+                <div className="inline-block px-1.5 py-0.5 rounded bg-cyan-500/20 border border-cyan-500/30 text-[9px] text-cyan-300 uppercase font-bold tracking-wide">
+                  {partInfo.category}
+                </div>
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="ml-2 w-5 h-5 rounded-full bg-gray-800/80 hover:bg-gray-700 flex items-center justify-center transition-colors flex-shrink-0"
+              >
+                <span className="text-gray-400 text-xs">×</span>
+              </button>
+            </div>
+
+            {/* Blood type badge (if available) */}
+            {partInfo.bloodType && (
+              <div className="text-[10px] mb-2 text-gray-400">
+                <span className={`font-semibold ${partInfo.bloodType.includes('Oxygenated') ? 'text-red-400' : 'text-blue-400'}`}>
+                  {partInfo.bloodType}
+                </span>
+              </div>
+            )}
+
+            {/* Description */}
+            <p className="text-[11px] text-gray-300 leading-relaxed mb-2">
+              {partInfo.description}
+            </p>
+
+            {/* Function */}
+            <div className="pt-2 border-t border-white/10">
+              <div className="text-[9px] text-gray-500 uppercase tracking-wider mb-1">Function</div>
+              <div className="text-[10px] text-cyan-300 leading-relaxed">
+                {partInfo.function}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Html>
+    </>
+  );
+}
+
 // Heart model component with animation
-function HeartModel({ beatTimes, isPlaying, onPartClick }: Heart3DProps) {
+function HeartModel({ beatTimes, isPlaying, onPartClick, selectedPart }: Heart3DProps) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Group>(null);
   const lastBeatTimeRef = useRef<number>(0);
@@ -375,6 +481,7 @@ function HeartModel({ beatTimes, isPlaying, onPartClick }: Heart3DProps) {
   const [heartModel, setHeartModel] = useState<THREE.Group | null>(null);
   const isAnimatingRef = useRef(false);
   const [hoveredMesh, setHoveredMesh] = useState<THREE.Mesh | null>(null);
+  const [clickedPosition, setClickedPosition] = useState<THREE.Vector3 | null>(null);
 
   // Load all heart OBJ models
   useEffect(() => {
@@ -571,7 +678,18 @@ function HeartModel({ beatTimes, isPlaying, onPartClick }: Heart3DProps) {
     const intersect = event.intersections[0];
 
     if (intersect && intersect.object.userData.partInfo) {
+      // Get the world position of the clicked point
+      const worldPosition = intersect.point.clone();
+      setClickedPosition(worldPosition);
       onPartClick(intersect.object.userData.partInfo);
+    }
+  };
+
+  // Handle label close
+  const handleLabelClose = () => {
+    setClickedPosition(null);
+    if (onPartClick) {
+      onPartClick(null);
     }
   };
 
@@ -620,6 +738,14 @@ function HeartModel({ beatTimes, isPlaying, onPartClick }: Heart3DProps) {
       </group>
       {/* Electrical impulse field */}
       <ElectricalImpulse isPlaying={isPlaying || false} beatTimes={beatTimes} />
+      {/* Label with line pointing to clicked part */}
+      {selectedPart && clickedPosition && (
+        <PartLabel
+          partInfo={selectedPart}
+          targetPosition={clickedPosition}
+          onClose={handleLabelClose}
+        />
+      )}
     </group>
   );
 }
@@ -658,7 +784,7 @@ function CameraTracker({ onCameraUpdate }: { onCameraUpdate?: (pos: { x: number;
 }
 
 // Main 3D scene
-function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpdate, onPartClick }: Heart3DProps) {
+function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpdate, onPartClick, selectedPart }: Heart3DProps) {
   const camPos = cameraPosition || { x: 0, y: 0, z: 300 };
   const camTarget = cameraTarget || { x: 0, y: 0, z: 0 };
 
@@ -705,14 +831,14 @@ function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpd
 
       {/* Heart Model */}
       <Suspense fallback={<LoadingPlaceholder />}>
-        <HeartModel beatTimes={beatTimes} isPlaying={isPlaying} onPartClick={onPartClick} />
+        <HeartModel beatTimes={beatTimes} isPlaying={isPlaying} onPartClick={onPartClick} selectedPart={selectedPart} />
       </Suspense>
     </>
   );
 }
 
 // Main component export
-export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, cameraTarget, onCameraUpdate, onPartClick }: Heart3DProps) {
+export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, cameraTarget, onCameraUpdate, onPartClick, selectedPart }: Heart3DProps) {
   return (
     <div className="w-full h-full">
       <Canvas
@@ -733,6 +859,7 @@ export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, 
           cameraTarget={cameraTarget}
           onCameraUpdate={onCameraUpdate}
           onPartClick={onPartClick}
+          selectedPart={selectedPart}
         />
       </Canvas>
     </div>
