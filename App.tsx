@@ -557,67 +557,126 @@ const App: React.FC = () => {
              </div>
 
              {/* Heart Labeling Diagram */}
-             {heartLabels.length > 0 && (
-               <div className="absolute inset-0 z-30 pointer-events-none">
-                 {/* SVG for drawing lines */}
-                 <svg className="absolute inset-0 w-full h-full pointer-events-none">
+             {heartLabels.length > 0 && (() => {
+               // Get viewport dimensions
+               const viewportWidth = typeof window !== 'undefined' ? window.innerWidth * 0.5 : 800; // 50% for right panel
+               const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
+
+               // Calculate smart label positions (textbook style)
+               const labelPositions = heartLabels.map((label, idx) => {
+                 const total = heartLabels.length;
+
+                 // Determine which side of the viewport to place the label
+                 // Distribute labels around the perimeter in a grid-like pattern
+                 const angle = (idx / total) * 2 * Math.PI;
+
+                 // Calculate distance from 3D point to edge of viewport
+                 let labelX, labelY;
+                 const margin = 80; // Margin from viewport edge
+                 const lineLength = 120; // Minimum line length
+
+                 // Quadrant-based positioning (cleaner distribution)
+                 if (angle < Math.PI / 4 || angle >= 7 * Math.PI / 4) {
+                   // Right side
+                   labelX = viewportWidth - margin;
+                   labelY = label.position2D.y;
+                 } else if (angle >= Math.PI / 4 && angle < 3 * Math.PI / 4) {
+                   // Bottom side
+                   labelX = label.position2D.x;
+                   labelY = viewportHeight - margin;
+                 } else if (angle >= 3 * Math.PI / 4 && angle < 5 * Math.PI / 4) {
+                   // Left side
+                   labelX = margin;
+                   labelY = label.position2D.y;
+                 } else {
+                   // Top side
+                   labelX = label.position2D.x;
+                   labelY = margin;
+                 }
+
+                 // Clamp positions to stay within viewport
+                 labelX = Math.max(margin, Math.min(viewportWidth - margin, labelX));
+                 labelY = Math.max(margin, Math.min(viewportHeight - margin, labelY));
+
+                 return { labelX, labelY };
+               });
+
+               return (
+                 <div className="absolute inset-0 z-30 pointer-events-none">
+                   {/* SVG for drawing lines */}
+                   <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                     {heartLabels.map((label, idx) => {
+                       const { labelX, labelY } = labelPositions[idx];
+
+                       return (
+                         <g key={`line-group-${idx}`}>
+                           {/* Leader line */}
+                           <line
+                             x1={label.position2D.x}
+                             y1={label.position2D.y}
+                             x2={labelX}
+                             y2={labelY}
+                             stroke="rgba(255, 255, 255, 0.9)"
+                             strokeWidth="2"
+                             strokeLinecap="round"
+                           />
+                           {/* Small dot at 3D point */}
+                           <circle
+                             cx={label.position2D.x}
+                             cy={label.position2D.y}
+                             r="3"
+                             fill="rgba(6, 182, 212, 1)"
+                             stroke="white"
+                             strokeWidth="1"
+                           />
+                         </g>
+                       );
+                     })}
+                   </svg>
+
+                   {/* Labels (textbook style) */}
                    {heartLabels.map((label, idx) => {
-                     // Calculate label position (spread around the edges)
-                     const angle = (idx / heartLabels.length) * 2 * Math.PI;
-                     const radius = 0.4; // Distance from center (0-0.5)
-                     const labelX = label.position2D.x + Math.cos(angle) * 200;
-                     const labelY = label.position2D.y + Math.sin(angle) * 150;
+                     const { labelX, labelY } = labelPositions[idx];
+
+                     // Determine text alignment based on position
+                     const isLeftSide = labelX < viewportWidth / 2;
+                     const textAlign = isLeftSide ? 'left' : 'right';
 
                      return (
-                       <line
-                         key={`line-${idx}`}
-                         x1={label.position2D.x}
-                         y1={label.position2D.y}
-                         x2={labelX}
-                         y2={labelY}
-                         stroke="rgba(6, 182, 212, 0.6)"
-                         strokeWidth="1.5"
-                         strokeDasharray="4 2"
-                       />
+                       <div
+                         key={`label-${idx}`}
+                         className="absolute pointer-events-none"
+                         style={{
+                           left: `${labelX}px`,
+                           top: `${labelY}px`,
+                           transform: isLeftSide ? 'translate(10px, -50%)' : 'translate(-100%, -50%)',
+                           textAlign: textAlign,
+                           maxWidth: '180px'
+                         }}
+                       >
+                         {/* Clean textbook-style label */}
+                         <div className="text-white text-sm font-semibold leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                           {label.partInfo.name}
+                         </div>
+                         <div className="text-cardio-cyan text-[10px] font-medium uppercase tracking-wider mt-0.5 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                           {label.partInfo.category}
+                         </div>
+                       </div>
                      );
                    })}
-                 </svg>
 
-                 {/* Labels */}
-                 {heartLabels.map((label, idx) => {
-                   const angle = (idx / heartLabels.length) * 2 * Math.PI;
-                   const labelX = label.position2D.x + Math.cos(angle) * 200;
-                   const labelY = label.position2D.y + Math.sin(angle) * 150;
-
-                   return (
-                     <div
-                       key={`label-${idx}`}
-                       className="absolute pointer-events-auto"
-                       style={{
-                         left: `${labelX}px`,
-                         top: `${labelY}px`,
-                         transform: 'translate(-50%, -50%)'
-                       }}
+                   {/* Close button */}
+                   <div className="absolute top-6 right-6 pointer-events-auto">
+                     <button
+                       onClick={() => setHeartLabels([])}
+                       className="w-10 h-10 rounded-full bg-black/90 backdrop-blur-md border border-white/40 hover:bg-gray-900 flex items-center justify-center transition-colors"
                      >
-                       <div className="bg-black/90 backdrop-blur-md border border-cardio-cyan/40 rounded-lg px-3 py-2 shadow-[0_0_15px_rgba(6,182,212,0.2)] min-w-[120px]">
-                         <div className="text-xs font-bold text-white mb-0.5">{label.partInfo.name}</div>
-                         <div className="text-[9px] text-cardio-cyan uppercase tracking-wide">{label.partInfo.category}</div>
-                       </div>
-                     </div>
-                   );
-                 })}
-
-                 {/* Close button */}
-                 <div className="absolute top-6 right-6 pointer-events-auto">
-                   <button
-                     onClick={() => setHeartLabels([])}
-                     className="w-10 h-10 rounded-full bg-black/90 backdrop-blur-md border border-cardio-cyan/40 hover:bg-gray-900 flex items-center justify-center transition-colors shadow-[0_0_15px_rgba(6,182,212,0.2)]"
-                   >
-                     <X className="w-4 h-4 text-cardio-cyan" />
-                   </button>
+                       <X className="w-4 h-4 text-white" />
+                     </button>
+                   </div>
                  </div>
-               </div>
-             )}
+               );
+             })()}
         </div>
 
       </main>
