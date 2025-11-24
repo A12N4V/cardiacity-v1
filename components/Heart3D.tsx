@@ -591,8 +591,17 @@ function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels }: Hear
           const partInfo = mesh.userData.partInfo as HeartPartInfo;
           const key = partInfo.name;
 
-          // Keep one mesh per unique part name
-          if (!sampledMeshes.has(key)) {
+          // FILTER: Only show outer structures (walls, arteries, veins, chambers)
+          // Exclude inner components like valves
+          const isOuterStructure =
+            partInfo.category.includes("Blood Vessel") ||
+            partInfo.category.includes("Chamber") ||
+            partInfo.category.includes("Wall") ||
+            partInfo.category.includes("Septum") ||
+            partInfo.category.includes("Muscle Tissue");
+
+          // Keep one mesh per unique part name, only if it's an outer structure
+          if (isOuterStructure && !sampledMeshes.has(key)) {
             sampledMeshes.set(key, mesh);
           }
         }
