@@ -1,298 +1,189 @@
-# CardiaCity 🫀
+# Cardiacity - ECG & 3D Heart Visualization Platform
 
-**Advanced ECG Visualization & 3D Heart Beat Simulator**
-
-CardiaCity is a medical-grade ECG (Electrocardiogram) visualization tool with real-time 3D anatomical heart rendering. It combines precision signal analysis with immersive 3D graphics to provide an interactive, educational platform for understanding cardiac electrophysiology.
-
-![CardiaCity Banner](https://img.shields.io/badge/React-19.2.0-61DAFB?logo=react&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8.2-3178C6?logo=typescript&logoColor=white)
-![Three.js](https://img.shields.io/badge/Three.js-0.180.0-000000?logo=three.js&logoColor=white)
-![Vite](https://img.shields.io/badge/Vite-6.2.0-646CFF?logo=vite&logoColor=white)
-
----
-
-## ✨ Features
-
-### 📊 ECG Signal Processing
-- **Real-time ECG visualization** using Plotly.js with high-fidelity waveform rendering
-- **Automated R-peak detection** with QRS complex identification
-- **Heart Rate Variability (HRV) analysis**:
-  - SDNN (Standard Deviation of NN intervals)
-  - RMSSD (Root Mean Square of Successive Differences)
-  - RR interval tracking (min/max/average)
-- **Interactive cursor inspection** with live waveform segment analysis
-- **Clinical classifications**: Tachycardia, Bradycardia, Normal Sinus Rhythm
-
-### 🫀 3D Anatomical Heart Visualization
-- **127 anatomically accurate OBJ models** of the human heart
-- **Functional color coding**:
-  - 🔴 **Arteries** - Bright Red (oxygenated blood)
-  - 🔵 **Veins** - Dark Blue (deoxygenated blood)
-  - 🟡 **Valves** - Yellow (regulation)
-  - 🩷 **Chambers** - Pink/Purple (atria and ventricles)
-- **Synchronized heartbeat animation** with ECG signal
-- **Electrical impulse visualization**:
-  - Atrial depolarization (red wave)
-  - AV node conduction (red to blue transition)
-  - Ventricular depolarization (blue wave)
-- **Interactive camera controls** with OrbitControls (zoom, pan, rotate)
-- **Real-time SYSTOLE/DIASTOLE indicators**
-
-### 🎮 Interactive Controls
-- **Play/Pause playback** with timeline scrubbing
-- **Multi-tab interface**:
-  - **Graph**: Live ECG waveform plotting
-  - **Stats**: Clinical metrics dashboard
-  - **About**: Waveform segment education
-- **Responsive design**: Optimized for desktop and mobile devices
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-- **Node.js** 18.x or higher
-- **npm** 9.x or higher
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/A12N4V/cardiacity-v1.git
-cd cardiacity-v1
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-The application will be available at **http://localhost:3000**
-
-### Build for Production
-
-```bash
-# Build optimized production bundle
-npm run build
-
-# Preview production build
-npm run preview
-```
-
----
+A comprehensive cardiac visualization platform featuring ECG analysis and 3D anatomical heart models with real-time beat synchronization.
 
 ## 📁 Project Structure
 
 ```
 cardiacity-v1/
-├── components/
-│   ├── ECGPlot.tsx          # ECG waveform plotting component (Plotly.js)
-│   └── Heart3D.tsx          # 3D heart visualization (Three.js)
-├── lib/
-│   └── ecgUtils.ts          # ECG signal processing utilities
-├── public/
-│   ├── cardiacity-models/   # 127 anatomical OBJ models (FJ2417-FJ2737)
-│   └── sample_ecg.csv       # Sample ECG data
-├── App.tsx                  # Main application component
-├── index.tsx                # React entry point
-├── index.html               # HTML shell with Tailwind CDN
-├── vite.config.ts           # Vite configuration
-├── tsconfig.json            # TypeScript configuration
-└── package.json             # Dependencies and scripts
+├── apps/
+│   ├── ecg-visualizer/      # Full-featured ECG analysis with 3D heart
+│   │   ├── components/      # ECGPlot, Heart3D (with click interactions)
+│   │   ├── lib/            # ECG processing utilities
+│   │   ├── public/         # Symlinks to shared assets
+│   │   ├── App.tsx         # Main application
+│   │   ├── package.json    # Vite + React + Plotly
+│   │   └── ...
+│   │
+│   └── heart-viewer/        # Standalone 3D heart beat visualizer
+│       ├── app/            # Next.js app directory
+│       ├── components/     # Heart3D, ThemeProvider
+│       ├── public/         # Symlinks to shared assets
+│       ├── package.json    # Next.js + React + Three.js
+│       └── ...
+│
+└── shared/
+    ├── models/             # Shared 3D models (single source of truth)
+    │   ├── cardiacity-models/  # 128 OBJ files (11MB)
+    │   └── sample_ecg.csv      # Sample ECG data
+    ├── components/         # (Reserved for future shared components)
+    └── lib/               # (Reserved for future shared utilities)
 ```
 
----
+## 🎯 Applications
 
-## 🛠️ Technology Stack
+### 1. ECG Visualizer (`apps/ecg-visualizer/`)
 
-### Frontend Framework
-- **React 19.2.0** - Component-based UI
-- **TypeScript 5.8.2** - Type-safe development
-- **Vite 6.2.0** - Lightning-fast build tool
+**Full-featured ECG analysis tool with interactive 3D heart visualization**
 
-### 3D Graphics Engine
-- **Three.js 0.180.0** - WebGL 3D rendering
-- **@react-three/fiber 9.4.0** - React renderer for Three.js
-- **@react-three/drei 10.7.6** - Three.js helpers (OrbitControls, Environment, etc.)
-- **GSAP 3.13.0** - High-performance animation timeline
+**Features:**
+- ECG signal processing (R-peak detection, HRV analysis)
+- Interactive ECG plotting with Plotly.js
+- Multiple view modes (standard, segmented, morphology)
+- 3D heart model with anatomical labels and click interactions
+- Real-time heart beat synchronization
+- Preset ECG patterns (normal, tachycardia, afib, QT prolongation)
+- CSV file upload support
 
-### Data Visualization
-- **Plotly.js** (via react-plotly.js 2.6.0) - Interactive ECG graphs
-- **PapaParse 5.5.3** - CSV parsing for ECG data
+**Tech Stack:**
+- **Framework:** Vite + React 19
+- **3D Rendering:** Three.js + React Three Fiber
+- **Plotting:** Plotly.js
+- **Animation:** GSAP
 
-### UI Components
-- **Lucide React 0.554.0** - Icon library
-- **Tailwind CSS** (via CDN) - Utility-first styling
-
----
-
-## 📖 How It Works
-
-### ECG Signal Flow
-1. **Data Loading**: Sample ECG data is loaded from `public/sample_ecg.csv`
-2. **R-Peak Detection**: QRS complexes are identified using derivative-based peak detection
-3. **HRV Calculation**: RR intervals are analyzed to compute SDNN and RMSSD
-4. **Waveform Rendering**: ECG trace is plotted with interactive cursor and annotations
-5. **Playback Sync**: Timeline cursor synchronizes with 3D heart animation
-
-### 3D Heart Animation Flow
-1. **Model Loading**: 127 OBJ files are loaded and grouped into a single heart mesh
-2. **Color Coding**: Meshes are classified by file ID and name patterns (arteries, veins, chambers)
-3. **Beat Synchronization**: Beat timestamps from ECG are converted to millisecond format
-4. **Animation Timeline**:
-   - **Systole** (contraction): Heart scales to 85% over 150ms
-   - **Diastole** (expansion): Heart expands to 105% over 200ms
-   - **Settling**: Returns to 100% over 150ms
-5. **Electrical Impulse**: Spherical wave propagates from atria (red) to ventricles (blue)
-
-### File ID Ranges
-- **FJ2417-FJ2439**: Heart chambers and valves
-- **FJ2631-FJ2677**: Coronary arteries (bright red)
-- **FJ2678-FJ2737**: Coronary veins (dark blue)
-
----
-
-## 🎨 Customization
-
-### Change ECG Data Source
-Replace `public/sample_ecg.csv` with your own ECG data in CSV format:
-```csv
-time,voltage
-0.000,-0.123
-0.004,-0.118
-...
+**Running:**
+```bash
+cd apps/ecg-visualizer
+npm install
+npm run dev
 ```
 
-### Adjust Heart Beat Animation
-Edit `/components/Heart3D.tsx` - `triggerHeartbeat()` function:
-```typescript
-// Modify systole contraction intensity
-timeline.to(meshRef.current.scale, {
-  x: 0.85,  // 0.85 = 15% contraction
-  y: 0.85,
-  z: 0.85,
-  duration: 0.15,
-  ease: "power2.in",
-});
+### 2. Heart Viewer (`apps/heart-viewer/`)
+
+**Standalone 3D heart beat visualizer with BPM control**
+
+**Features:**
+- Real-time 3D heart beat animation
+- Adjustable BPM (30-200)
+- Camera position controls
+- Simple, focused interface for beat visualization
+- Dark/light theme support
+
+**Tech Stack:**
+- **Framework:** Next.js 16 + React 19
+- **3D Rendering:** Three.js + React Three Fiber
+- **Styling:** Tailwind CSS
+- **Animation:** GSAP
+
+**Running:**
+```bash
+cd apps/heart-viewer
+npm install
+npm run dev
 ```
 
-### Customize Color Scheme
-Edit `/components/Heart3D.tsx` - `HEART_COLORS` object:
-```typescript
-const HEART_COLORS = {
-  'artery': 0xFF0000,     // Bright Red
-  'vein': 0x0000CD,       // Dark Blue
-  'valve': 0xFFDD44,      // Yellow
-  // ... customize colors here
-};
+## 🔧 Architecture Decisions
+
+### Why Two Separate Apps?
+
+1. **Different Use Cases:**
+   - ECG Visualizer: Medical/educational tool for ECG analysis
+   - Heart Viewer: Simplified 3D visualization for presentations/demos
+
+2. **Different Tech Stacks:**
+   - ECG Visualizer uses Vite for faster development
+   - Heart Viewer uses Next.js for better production deployment
+
+3. **Component Differences:**
+   - `Heart3D` in ECG Visualizer has click interactions and detailed anatomical info
+   - `Heart3D` in Heart Viewer is simpler, optimized for pure visualization
+
+### Shared Resources
+
+- **3D Models:** Single source in `shared/models/` (11MB), accessed via symlinks
+- **Saves:** ~11MB by deduplicating the 128 OBJ heart model files
+- **Symlinks:** Each app's `public/` directory symlinks to `shared/models/`
+
+## 📊 Component Breakdown
+
+### Heart3D Component Variants
+
+**ECG Visualizer Version:**
+- `onPartClick` prop for interactive anatomy exploration
+- `HeartPartInfo` interface with detailed anatomical data
+- Hover effects with cursor changes
+- Click handlers for educational information display
+
+**Heart Viewer Version:**
+- Simplified interface without click interactions
+- Optimized for pure visualization performance
+- Cleaner codebase for BPM-driven animation
+
+### Shared Color Coding
+
+Both variants use the same functional color coding:
+- **Atria:** Blue shades (deoxygenated blood reception)
+- **Ventricles:** Red shades (pumping chambers)
+- **Valves:** Yellow (regulation)
+- **Arteries:** Bright red (oxygenated blood)
+- **Veins:** Dark blue (deoxygenated blood)
+
+## 🚀 Development
+
+### Prerequisites
+- Node.js 18+ recommended
+- npm or yarn
+
+### Quick Start
+
+1. **Clone the repository**
+```bash
+git clone <repository-url>
+cd cardiacity-v1
 ```
 
----
+2. **Choose your app and run it**
 
-## 🔬 Educational Use Cases
+For ECG Visualizer:
+```bash
+cd apps/ecg-visualizer
+npm install
+npm run dev
+```
 
-### Medical Training
-- **ECG interpretation**: Learn to identify P, Q, R, S, T waves
-- **Arrhythmia detection**: Compare normal vs abnormal rhythms
-- **Electrophysiology**: Visualize electrical impulse propagation through heart
+For Heart Viewer:
+```bash
+cd apps/heart-viewer
+npm install
+npm run dev
+```
 
-### Research Applications
-- **HRV analysis**: Study autonomic nervous system function
-- **Cardiac modeling**: Understand 3D anatomy and function
-- **Data visualization**: Explore creative medical data presentation
+## 📈 Metrics
 
-### Academic Demonstrations
-- **Classroom teaching**: Interactive heart physiology lessons
-- **Conference presentations**: Engaging cardiac science demos
-- **Science fairs**: Showcase biomedical engineering concepts
+**Before Refactoring:**
+- Duplicated code: ~30%
+- Wasted disk space: ~11MB (duplicate 3D models)
+- Unused files: 4 Vite config files in Next.js app
+- Organization: Confusing "3d canvas" directory name
 
----
-
-## 🐛 Troubleshooting
-
-### 3D Models Not Loading
-**Issue**: Console shows "404 Not Found" for `.obj` files
-**Solution**: Ensure `/public/cardiacity-models/` contains all 127 OBJ files
-
-### Slow Performance
-**Issue**: Low frame rate during 3D animation
-**Solution**:
-- Reduce model quality in `Heart3D.tsx` by limiting loaded files
-- Lower `dpr` in Canvas component: `dpr={[1, 1]}` (instead of `[1, 2]`)
-
-### ECG Data Not Displaying
-**Issue**: Graph shows "No data"
-**Solution**: Verify `public/sample_ecg.csv` exists and has correct format (time, voltage columns)
-
-### Build Errors
-**Issue**: TypeScript errors during build
-**Solution**: Run `npm install` to ensure all dependencies are installed
-
----
-
-## 📊 Performance Metrics
-
-- **Model Count**: 127 anatomical meshes
-- **Total Vertices**: ~500,000 (varies by model detail)
-- **Frame Rate**: 60 FPS (on modern hardware)
-- **Bundle Size**: ~2.5 MB (gzipped)
-- **Load Time**: ~3-5 seconds (127 models + textures)
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Commit your changes**: `git commit -m 'Add amazing feature'`
-4. **Push to branch**: `git push origin feature/amazing-feature`
-5. **Open a Pull Request**
-
-### Development Guidelines
-- Follow existing code style (ESLint + Prettier)
-- Add TypeScript types for all new code
-- Test on multiple browsers (Chrome, Firefox, Safari)
-- Document new features in README
-
----
+**After Refactoring:**
+- Code duplication: Eliminated (except intentional variants)
+- Disk space saved: 11MB
+- Unused files: Removed
+- Organization: Clear separation of concerns
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+See individual app directories for license information.
+
+## 🤝 Contributing
+
+This is an organized monorepo structure. When contributing:
+1. Identify which app your changes belong to
+2. Keep shared resources in `shared/`
+3. Don't duplicate 3D model files - use symlinks
+4. Maintain component variants when they serve different purposes
 
 ---
 
-## 🙏 Acknowledgments
-
-- **ECG Data**: Sample data derived from publicly available ECG datasets
-- **3D Models**: Anatomical heart models from medical imaging sources
-- **Icons**: Lucide React icon library
-- **Inspiration**: Medical visualization tools and cardiac education platforms
-
----
-
-## 📞 Contact & Support
-
-- **GitHub Issues**: [Report bugs or request features](https://github.com/A12N4V/cardiacity-v1/issues)
-- **Documentation**: See inline code comments for technical details
-- **Community**: Join discussions in GitHub Discussions
-
----
-
-## 🔮 Roadmap
-
-- [ ] **Multi-lead ECG support** (12-lead ECG visualization)
-- [ ] **Custom data upload** (drag-and-drop CSV files)
-- [ ] **Real-time heart rate monitoring** (WebRTC integration)
-- [ ] **AR/VR mode** (immersive 3D heart exploration)
-- [ ] **Export animations** (video recording of heartbeat cycles)
-- [ ] **Advanced analytics** (frequency domain analysis, Poincaré plots)
-
----
-
-**Built with ❤️ for cardiac science education**
-
-*CardiaCity - Visualizing the rhythm of life*
+**Built with ❤️ for cardiac education and visualization**
