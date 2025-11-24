@@ -68,26 +68,19 @@ cardiacity-v1/
 
 ### Installation & Running
 
-1. **Clone the repository**
 ```bash
-git clone <repository-url>
+# Clone the repository
+git clone https://github.com/A12N4V/cardiacity-v1.git
 cd cardiacity-v1
-```
 
-2. **Install dependencies**
-```bash
+# Install dependencies
 npm install
-```
 
-3. **Start development server**
-```bash
+# Start development server
 npm run dev
 ```
 
-4. **Open in browser**
-```
-http://localhost:5173
-```
+The app will be available at `http://localhost:5173`
 
 ### Build for Production
 
