@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ECGPlot, { PointDetails } from './components/ECGPlot';
-import Heart3D from './components/Heart3D';
-import { Heart, Activity, BrainCircuit, Waves, Info, MonitorPlay, Crosshair, Play, Pause, ChartBar, Stethoscope, Zap } from 'lucide-react';
+import Heart3D, { HeartPartInfo } from './components/Heart3D';
+import { Heart, Activity, BrainCircuit, Waves, Info, MonitorPlay, Crosshair, Play, Pause, ChartBar, Stethoscope, Zap, X } from 'lucide-react';
 import { ECGStatistics, getSegmentDescription, getHRVStatus } from './lib/ecgUtils';
 
 /**
@@ -179,6 +179,9 @@ const App: React.FC = () => {
   const [cursorTimestamp, setCursorTimestamp] = useState(0);
   const [pointDetails, setPointDetails] = useState<PointDetails | null>(null);
 
+  // Heart part labeling state
+  const [selectedPart, setSelectedPart] = useState<HeartPartInfo | null>(null);
+
   // Animation Refs
   const lastFrameTimeRef = useRef<number>(0);
 
@@ -189,6 +192,10 @@ const App: React.FC = () => {
 
   const handleStatsUpdate = useCallback((newStats: ECGStatistics) => {
     setStats(newStats);
+  }, []);
+
+  const handlePartClick = useCallback((partInfo: HeartPartInfo | null) => {
+    setSelectedPart(partInfo);
   }, []);
 
   // Loop Animation Frame
@@ -531,6 +538,7 @@ const App: React.FC = () => {
                  <Heart3D
                    beatTimes={beatTimestamps.map(t => Date.now() + (t - cursorTimestamp) * 1000)}
                    isPlaying={isPlaying}
+                   onPartClick={handlePartClick}
                  />
              </div>
 
@@ -547,6 +555,70 @@ const App: React.FC = () => {
                     </span>
                 </div>
              </div>
+
+             {/* Heart Part Label Panel */}
+             {selectedPart && (
+               <div className="absolute top-6 left-6 right-6 z-30 pointer-events-auto">
+                 <div className="bg-black/90 backdrop-blur-xl border border-cardio-cyan/30 rounded-xl shadow-[0_0_30px_rgba(6,182,212,0.15)] overflow-hidden max-w-md">
+                   {/* Header */}
+                   <div className="bg-gradient-to-r from-cardio-cyan/20 to-transparent px-4 py-3 border-b border-cardio-cyan/20 flex items-center justify-between">
+                     <div className="flex items-center space-x-2">
+                       <Heart className="w-4 h-4 text-cardio-cyan" />
+                       <span className="text-xs font-bold uppercase tracking-wider text-cardio-cyan">Anatomical Label</span>
+                     </div>
+                     <button
+                       onClick={() => setSelectedPart(null)}
+                       className="w-6 h-6 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors"
+                     >
+                       <X className="w-3 h-3 text-gray-400" />
+                     </button>
+                   </div>
+
+                   {/* Content */}
+                   <div className="p-4 space-y-3">
+                     {/* Part Name */}
+                     <div>
+                       <h3 className="text-xl font-bold text-white mb-1">{selectedPart.name}</h3>
+                       <div className="inline-block px-2 py-0.5 rounded bg-cardio-cyan/10 border border-cardio-cyan/20 text-[10px] text-cardio-cyan uppercase font-bold tracking-wide">
+                         {selectedPart.category}
+                       </div>
+                     </div>
+
+                     {/* Blood Type Badge (if available) */}
+                     {selectedPart.bloodType && (
+                       <div className="flex items-center space-x-2 text-xs">
+                         <Activity className="w-3 h-3 text-red-400" />
+                         <span className="text-gray-400">Blood Type:</span>
+                         <span className={`font-bold ${selectedPart.bloodType.includes('Oxygenated') ? 'text-red-400' : 'text-blue-400'}`}>
+                           {selectedPart.bloodType}
+                         </span>
+                       </div>
+                     )}
+
+                     {/* Description */}
+                     <div className="bg-black/40 rounded-lg p-3 border border-white/5">
+                       <p className="text-xs text-gray-300 leading-relaxed mb-2">
+                         {selectedPart.description}
+                       </p>
+                       <div className="pt-2 border-t border-white/5">
+                         <div className="flex items-start space-x-2">
+                           <Zap className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
+                           <div>
+                             <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Function</span>
+                             <span className="text-xs text-white">{selectedPart.function}</span>
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+
+                     {/* Hint */}
+                     <div className="text-[10px] text-gray-600 text-center pt-2 border-t border-white/5">
+                       Click another part to view its details, or press × to close
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             )}
         </div>
 
       </main>

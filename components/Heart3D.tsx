@@ -11,6 +11,15 @@ interface Heart3DProps {
   cameraPosition?: { x: number; y: number; z: number };
   cameraTarget?: { x: number; y: number; z: number };
   onCameraUpdate?: (position: { x: number; y: number; z: number }) => void;
+  onPartClick?: (partInfo: HeartPartInfo | null) => void;
+}
+
+export interface HeartPartInfo {
+  name: string;
+  category: string;
+  description: string;
+  function: string;
+  bloodType?: string;
 }
 
 // Functional color coding for heart parts
@@ -77,6 +86,147 @@ function getHeartPartColor(meshName: string, filename: string): number {
   }
 
   return HEART_COLORS.default;
+}
+
+// Heart part information database
+function getHeartPartInfo(meshName: string, filename: string): HeartPartInfo {
+  const lowerName = meshName.toLowerCase();
+  const lowerFilename = filename.toLowerCase();
+
+  // Extract file ID
+  const fileIdMatch = filename.match(/FJ(\d+)/);
+  const fileId = fileIdMatch ? parseInt(fileIdMatch[1]) : 0;
+
+  // Coronary arteries
+  if (fileId >= 2631 && fileId <= 2677) {
+    return {
+      name: `Coronary Artery (${filename})`,
+      category: "Blood Vessel - Artery",
+      description: "Coronary arteries supply oxygen-rich blood to the heart muscle (myocardium).",
+      function: "Delivers oxygenated blood from the aorta to cardiac tissue",
+      bloodType: "Oxygenated (arterial)"
+    };
+  }
+
+  // Coronary veins
+  if (fileId >= 2678 && fileId <= 2737) {
+    return {
+      name: `Coronary Vein (${filename})`,
+      category: "Blood Vessel - Vein",
+      description: "Coronary veins collect deoxygenated blood from the heart muscle and return it to the right atrium.",
+      function: "Returns deoxygenated blood from cardiac tissue to the heart",
+      bloodType: "Deoxygenated (venous)"
+    };
+  }
+
+  // Right Atrium
+  if (lowerName.includes('right') && lowerName.includes('atrium')) {
+    return {
+      name: "Right Atrium",
+      category: "Chamber - Atrium",
+      description: "The right atrium receives deoxygenated blood from the body via the superior and inferior vena cava.",
+      function: "Receives deoxygenated blood from systemic circulation",
+      bloodType: "Deoxygenated"
+    };
+  }
+
+  // Left Atrium
+  if (lowerName.includes('left') && lowerName.includes('atrium')) {
+    return {
+      name: "Left Atrium",
+      category: "Chamber - Atrium",
+      description: "The left atrium receives oxygen-rich blood from the lungs via the pulmonary veins.",
+      function: "Receives oxygenated blood from pulmonary circulation",
+      bloodType: "Oxygenated"
+    };
+  }
+
+  // Right Ventricle
+  if (lowerName.includes('right') && lowerName.includes('ventricle')) {
+    return {
+      name: "Right Ventricle",
+      category: "Chamber - Ventricle",
+      description: "The right ventricle pumps deoxygenated blood to the lungs through the pulmonary artery.",
+      function: "Pumps blood to lungs for oxygenation",
+      bloodType: "Deoxygenated"
+    };
+  }
+
+  // Left Ventricle
+  if (lowerName.includes('left') && lowerName.includes('ventricle')) {
+    return {
+      name: "Left Ventricle",
+      category: "Chamber - Ventricle",
+      description: "The left ventricle is the heart's main pumping chamber, sending oxygen-rich blood throughout the body.",
+      function: "Pumps oxygenated blood to entire body (systemic circulation)",
+      bloodType: "Oxygenated"
+    };
+  }
+
+  // Valves
+  if (lowerName.includes('tricuspid')) {
+    return {
+      name: "Tricuspid Valve",
+      category: "Valve",
+      description: "The tricuspid valve controls blood flow from the right atrium to the right ventricle.",
+      function: "Prevents backflow from right ventricle to right atrium"
+    };
+  }
+
+  if (lowerName.includes('mitral')) {
+    return {
+      name: "Mitral Valve (Bicuspid)",
+      category: "Valve",
+      description: "The mitral valve controls blood flow from the left atrium to the left ventricle.",
+      function: "Prevents backflow from left ventricle to left atrium"
+    };
+  }
+
+  if (lowerName.includes('pulmonary') && lowerName.includes('valve')) {
+    return {
+      name: "Pulmonary Valve",
+      category: "Valve",
+      description: "The pulmonary valve controls blood flow from the right ventricle to the pulmonary artery.",
+      function: "Prevents backflow from pulmonary artery to right ventricle"
+    };
+  }
+
+  if (lowerName.includes('aortic') && lowerName.includes('valve')) {
+    return {
+      name: "Aortic Valve",
+      category: "Valve",
+      description: "The aortic valve controls blood flow from the left ventricle to the aorta.",
+      function: "Prevents backflow from aorta to left ventricle"
+    };
+  }
+
+  // Septum
+  if (lowerName.includes('septum')) {
+    return {
+      name: "Interventricular Septum",
+      category: "Wall/Septum",
+      description: "The septum is a muscular wall that separates the left and right sides of the heart.",
+      function: "Prevents mixing of oxygenated and deoxygenated blood"
+    };
+  }
+
+  // Myocardium
+  if (lowerName.includes('myocardium') || lowerName.includes('wall')) {
+    return {
+      name: "Myocardium (Heart Muscle)",
+      category: "Muscle Tissue",
+      description: "The myocardium is the thick, muscular middle layer of the heart wall responsible for contraction.",
+      function: "Contracts to pump blood through the circulatory system"
+    };
+  }
+
+  // Default for unidentified parts
+  return {
+    name: `Heart Structure (${filename})`,
+    category: "Cardiac Tissue",
+    description: "This is part of the heart's complex anatomical structure.",
+    function: "Contributes to cardiac function"
+  };
 }
 
 // Electrical impulse field component
@@ -217,13 +367,14 @@ function ElectricalImpulse({ isPlaying, beatTimes }: { isPlaying: boolean; beatT
 }
 
 // Heart model component with animation
-function HeartModel({ beatTimes, isPlaying }: Heart3DProps) {
+function HeartModel({ beatTimes, isPlaying, onPartClick }: Heart3DProps) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Group>(null);
   const lastBeatTimeRef = useRef<number>(0);
   const animationRef = useRef<gsap.core.Timeline | null>(null);
   const [heartModel, setHeartModel] = useState<THREE.Group | null>(null);
   const isAnimatingRef = useRef(false);
+  const [hoveredMesh, setHoveredMesh] = useState<THREE.Mesh | null>(null);
 
   // Load all heart OBJ models
   useEffect(() => {
@@ -275,6 +426,10 @@ function HeartModel({ beatTimes, isPlaying }: Heart3DProps) {
               const functionalColor = getHeartPartColor(meshName, filename);
 
               console.log(`   - Mesh: ${meshName} → Color: #${functionalColor.toString(16)}`);
+
+              // Store part information in userData for click detection
+              child.userData.partInfo = getHeartPartInfo(meshName, filename);
+              child.userData.originalColor = functionalColor;
 
               // Functionally color-coded material
               child.material = new THREE.MeshStandardMaterial({
@@ -391,6 +546,51 @@ function HeartModel({ beatTimes, isPlaying }: Heart3DProps) {
     }
   });
 
+  // Handle hover effect
+  useEffect(() => {
+    if (!hoveredMesh) return;
+
+    const material = hoveredMesh.material as THREE.MeshStandardMaterial;
+    const originalEmissiveIntensity = 0.1;
+
+    // Brighten on hover
+    material.emissiveIntensity = 0.3;
+    document.body.style.cursor = 'pointer';
+
+    return () => {
+      material.emissiveIntensity = originalEmissiveIntensity;
+      document.body.style.cursor = 'default';
+    };
+  }, [hoveredMesh]);
+
+  // Handle click
+  const handleClick = (event: any) => {
+    if (!onPartClick) return;
+
+    event.stopPropagation();
+    const intersect = event.intersections[0];
+
+    if (intersect && intersect.object.userData.partInfo) {
+      onPartClick(intersect.object.userData.partInfo);
+    }
+  };
+
+  // Handle pointer move for hover effect
+  const handlePointerMove = (event: any) => {
+    const intersect = event.intersections[0];
+
+    if (intersect && intersect.object.isMesh) {
+      setHoveredMesh(intersect.object);
+    } else {
+      setHoveredMesh(null);
+    }
+  };
+
+  // Handle pointer leave
+  const handlePointerLeave = () => {
+    setHoveredMesh(null);
+  };
+
   useEffect(() => {
     return () => {
       if (animationRef.current) {
@@ -410,7 +610,12 @@ function HeartModel({ beatTimes, isPlaying }: Heart3DProps) {
 
   return (
     <group ref={groupRef}>
-      <group ref={meshRef}>
+      <group
+        ref={meshRef}
+        onClick={handleClick}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+      >
         <primitive object={heartModel} />
       </group>
       {/* Electrical impulse field */}
@@ -453,7 +658,7 @@ function CameraTracker({ onCameraUpdate }: { onCameraUpdate?: (pos: { x: number;
 }
 
 // Main 3D scene
-function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpdate }: Heart3DProps) {
+function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpdate, onPartClick }: Heart3DProps) {
   const camPos = cameraPosition || { x: 0, y: 0, z: 300 };
   const camTarget = cameraTarget || { x: 0, y: 0, z: 0 };
 
@@ -500,14 +705,14 @@ function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpd
 
       {/* Heart Model */}
       <Suspense fallback={<LoadingPlaceholder />}>
-        <HeartModel beatTimes={beatTimes} isPlaying={isPlaying} />
+        <HeartModel beatTimes={beatTimes} isPlaying={isPlaying} onPartClick={onPartClick} />
       </Suspense>
     </>
   );
 }
 
 // Main component export
-export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, cameraTarget, onCameraUpdate }: Heart3DProps) {
+export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, cameraTarget, onCameraUpdate, onPartClick }: Heart3DProps) {
   return (
     <div className="w-full h-full">
       <Canvas
@@ -527,6 +732,7 @@ export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, 
           cameraPosition={cameraPosition}
           cameraTarget={cameraTarget}
           onCameraUpdate={onCameraUpdate}
+          onPartClick={onPartClick}
         />
       </Canvas>
     </div>
