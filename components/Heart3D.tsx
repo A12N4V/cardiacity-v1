@@ -1,4 +1,4 @@
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Environment, PerspectiveCamera } from "@react-three/drei";
 import { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -12,6 +12,13 @@ interface Heart3DProps {
   cameraTarget?: { x: number; y: number; z: number };
   onCameraUpdate?: (position: { x: number; y: number; z: number }) => void;
   onPartClick?: (partInfo: HeartPartInfo | null) => void;
+  onShowAllLabels?: (labels: HeartLabel[]) => void;
+}
+
+export interface HeartLabel {
+  partInfo: HeartPartInfo;
+  position2D: { x: number; y: number };
+  position3D: { x: number; y: number; z: number };
 }
 
 export interface HeartPartInfo {
@@ -367,7 +374,7 @@ function ElectricalImpulse({ isPlaying, beatTimes }: { isPlaying: boolean; beatT
 }
 
 // Heart model component with animation
-function HeartModel({ beatTimes, isPlaying, onPartClick }: Heart3DProps) {
+function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels }: Heart3DProps) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Group>(null);
   const lastBeatTimeRef = useRef<number>(0);
@@ -375,6 +382,8 @@ function HeartModel({ beatTimes, isPlaying, onPartClick }: Heart3DProps) {
   const [heartModel, setHeartModel] = useState<THREE.Group | null>(null);
   const isAnimatingRef = useRef(false);
   const [hoveredMesh, setHoveredMesh] = useState<THREE.Mesh | null>(null);
+  const heartMeshesRef = useRef<THREE.Mesh[]>([]);
+  const { camera, size } = useThree();
 
   // Load all heart OBJ models
   useEffect(() => {
@@ -444,6 +453,9 @@ function HeartModel({ beatTimes, isPlaying, onPartClick }: Heart3DProps) {
               // Enable shadows
               child.castShadow = true;
               child.receiveShadow = true;
+
+              // Store mesh reference for labeling
+              heartMeshesRef.current.push(child);
             }
           });
 
@@ -563,15 +575,60 @@ function HeartModel({ beatTimes, isPlaying, onPartClick }: Heart3DProps) {
     };
   }, [hoveredMesh]);
 
-  // Handle click
+  // Handle click - Show all labels
   const handleClick = (event: any) => {
-    if (!onPartClick) return;
-
     event.stopPropagation();
-    const intersect = event.intersections[0];
 
-    if (intersect && intersect.object.userData.partInfo) {
-      onPartClick(intersect.object.userData.partInfo);
+    // If onShowAllLabels is provided, show all labels
+    if (onShowAllLabels) {
+      const labels: HeartLabel[] = [];
+
+      // Sample representative meshes for labeling (to avoid too many labels)
+      const sampledMeshes = new Map<string, THREE.Mesh>();
+
+      heartMeshesRef.current.forEach((mesh) => {
+        if (mesh.userData.partInfo) {
+          const partInfo = mesh.userData.partInfo as HeartPartInfo;
+          const key = partInfo.name;
+
+          // Keep one mesh per unique part name
+          if (!sampledMeshes.has(key)) {
+            sampledMeshes.set(key, mesh);
+          }
+        }
+      });
+
+      // Calculate 2D positions for each unique part
+      sampledMeshes.forEach((mesh) => {
+        const partInfo = mesh.userData.partInfo as HeartPartInfo;
+
+        // Get mesh center in world space
+        const boundingBox = new THREE.Box3().setFromObject(mesh);
+        const center = new THREE.Vector3();
+        boundingBox.getCenter(center);
+
+        // Project to screen space
+        const vector = center.clone();
+        vector.project(camera);
+
+        // Convert to pixel coordinates
+        const x = (vector.x * 0.5 + 0.5) * size.width;
+        const y = (vector.y * -0.5 + 0.5) * size.height;
+
+        labels.push({
+          partInfo,
+          position2D: { x, y },
+          position3D: { x: center.x, y: center.y, z: center.z }
+        });
+      });
+
+      onShowAllLabels(labels);
+    } else if (onPartClick) {
+      // Fallback to old behavior
+      const intersect = event.intersections[0];
+      if (intersect && intersect.object.userData.partInfo) {
+        onPartClick(intersect.object.userData.partInfo);
+      }
     }
   };
 
@@ -705,14 +762,14 @@ function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpd
 
       {/* Heart Model */}
       <Suspense fallback={<LoadingPlaceholder />}>
-        <HeartModel beatTimes={beatTimes} isPlaying={isPlaying} onPartClick={onPartClick} />
+        <HeartModel beatTimes={beatTimes} isPlaying={isPlaying} onPartClick={onPartClick} onShowAllLabels={onShowAllLabels} />
       </Suspense>
     </>
   );
 }
 
 // Main component export
-export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, cameraTarget, onCameraUpdate, onPartClick }: Heart3DProps) {
+export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, cameraTarget, onCameraUpdate, onPartClick, onShowAllLabels }: Heart3DProps) {
   return (
     <div className="w-full h-full">
       <Canvas
@@ -733,6 +790,7 @@ export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, 
           cameraTarget={cameraTarget}
           onCameraUpdate={onCameraUpdate}
           onPartClick={onPartClick}
+          onShowAllLabels={onShowAllLabels}
         />
       </Canvas>
     </div>
