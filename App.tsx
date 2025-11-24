@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ECGPlot, { PointDetails } from './components/ECGPlot';
-import Heart3D, { HeartPartInfo } from './components/Heart3D';
+import Heart3D, { HeartPartInfo, HeartLabel } from './components/Heart3D';
 import { Heart, Activity, BrainCircuit, Waves, Info, MonitorPlay, Crosshair, Play, Pause, ChartBar, Stethoscope, Zap, X } from 'lucide-react';
 import { ECGStatistics, getSegmentDescription, getHRVStatus } from './lib/ecgUtils';
 
@@ -180,7 +180,7 @@ const App: React.FC = () => {
   const [pointDetails, setPointDetails] = useState<PointDetails | null>(null);
 
   // Heart part labeling state
-  const [selectedPart, setSelectedPart] = useState<HeartPartInfo | null>(null);
+  const [heartLabels, setHeartLabels] = useState<HeartLabel[]>([]);
 
   // Animation Refs
   const lastFrameTimeRef = useRef<number>(0);
@@ -194,8 +194,8 @@ const App: React.FC = () => {
     setStats(newStats);
   }, []);
 
-  const handlePartClick = useCallback((partInfo: HeartPartInfo | null) => {
-    setSelectedPart(partInfo);
+  const handleShowAllLabels = useCallback((labels: HeartLabel[]) => {
+    setHeartLabels(labels);
   }, []);
 
   // Loop Animation Frame
@@ -538,7 +538,7 @@ const App: React.FC = () => {
                  <Heart3D
                    beatTimes={beatTimestamps.map(t => Date.now() + (t - cursorTimestamp) * 1000)}
                    isPlaying={isPlaying}
-                   onPartClick={handlePartClick}
+                   onShowAllLabels={handleShowAllLabels}
                  />
              </div>
 
@@ -556,66 +556,65 @@ const App: React.FC = () => {
                 </div>
              </div>
 
-             {/* Heart Part Label Panel */}
-             {selectedPart && (
-               <div className="absolute top-6 left-6 right-6 z-30 pointer-events-auto">
-                 <div className="bg-black/90 backdrop-blur-xl border border-cardio-cyan/30 rounded-xl shadow-[0_0_30px_rgba(6,182,212,0.15)] overflow-hidden max-w-md">
-                   {/* Header */}
-                   <div className="bg-gradient-to-r from-cardio-cyan/20 to-transparent px-4 py-3 border-b border-cardio-cyan/20 flex items-center justify-between">
-                     <div className="flex items-center space-x-2">
-                       <Heart className="w-4 h-4 text-cardio-cyan" />
-                       <span className="text-xs font-bold uppercase tracking-wider text-cardio-cyan">Anatomical Label</span>
-                     </div>
-                     <button
-                       onClick={() => setSelectedPart(null)}
-                       className="w-6 h-6 rounded-full bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors"
+             {/* Heart Labeling Diagram */}
+             {heartLabels.length > 0 && (
+               <div className="absolute inset-0 z-30 pointer-events-none">
+                 {/* SVG for drawing lines */}
+                 <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                   {heartLabels.map((label, idx) => {
+                     // Calculate label position (spread around the edges)
+                     const angle = (idx / heartLabels.length) * 2 * Math.PI;
+                     const radius = 0.4; // Distance from center (0-0.5)
+                     const labelX = label.position2D.x + Math.cos(angle) * 200;
+                     const labelY = label.position2D.y + Math.sin(angle) * 150;
+
+                     return (
+                       <line
+                         key={`line-${idx}`}
+                         x1={label.position2D.x}
+                         y1={label.position2D.y}
+                         x2={labelX}
+                         y2={labelY}
+                         stroke="rgba(6, 182, 212, 0.6)"
+                         strokeWidth="1.5"
+                         strokeDasharray="4 2"
+                       />
+                     );
+                   })}
+                 </svg>
+
+                 {/* Labels */}
+                 {heartLabels.map((label, idx) => {
+                   const angle = (idx / heartLabels.length) * 2 * Math.PI;
+                   const labelX = label.position2D.x + Math.cos(angle) * 200;
+                   const labelY = label.position2D.y + Math.sin(angle) * 150;
+
+                   return (
+                     <div
+                       key={`label-${idx}`}
+                       className="absolute pointer-events-auto"
+                       style={{
+                         left: `${labelX}px`,
+                         top: `${labelY}px`,
+                         transform: 'translate(-50%, -50%)'
+                       }}
                      >
-                       <X className="w-3 h-3 text-gray-400" />
-                     </button>
-                   </div>
-
-                   {/* Content */}
-                   <div className="p-4 space-y-3">
-                     {/* Part Name */}
-                     <div>
-                       <h3 className="text-xl font-bold text-white mb-1">{selectedPart.name}</h3>
-                       <div className="inline-block px-2 py-0.5 rounded bg-cardio-cyan/10 border border-cardio-cyan/20 text-[10px] text-cardio-cyan uppercase font-bold tracking-wide">
-                         {selectedPart.category}
+                       <div className="bg-black/90 backdrop-blur-md border border-cardio-cyan/40 rounded-lg px-3 py-2 shadow-[0_0_15px_rgba(6,182,212,0.2)] min-w-[120px]">
+                         <div className="text-xs font-bold text-white mb-0.5">{label.partInfo.name}</div>
+                         <div className="text-[9px] text-cardio-cyan uppercase tracking-wide">{label.partInfo.category}</div>
                        </div>
                      </div>
+                   );
+                 })}
 
-                     {/* Blood Type Badge (if available) */}
-                     {selectedPart.bloodType && (
-                       <div className="flex items-center space-x-2 text-xs">
-                         <Activity className="w-3 h-3 text-red-400" />
-                         <span className="text-gray-400">Blood Type:</span>
-                         <span className={`font-bold ${selectedPart.bloodType.includes('Oxygenated') ? 'text-red-400' : 'text-blue-400'}`}>
-                           {selectedPart.bloodType}
-                         </span>
-                       </div>
-                     )}
-
-                     {/* Description */}
-                     <div className="bg-black/40 rounded-lg p-3 border border-white/5">
-                       <p className="text-xs text-gray-300 leading-relaxed mb-2">
-                         {selectedPart.description}
-                       </p>
-                       <div className="pt-2 border-t border-white/5">
-                         <div className="flex items-start space-x-2">
-                           <Zap className="w-3 h-3 text-yellow-500 mt-0.5 flex-shrink-0" />
-                           <div>
-                             <span className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">Function</span>
-                             <span className="text-xs text-white">{selectedPart.function}</span>
-                           </div>
-                         </div>
-                       </div>
-                     </div>
-
-                     {/* Hint */}
-                     <div className="text-[10px] text-gray-600 text-center pt-2 border-t border-white/5">
-                       Click another part to view its details, or press × to close
-                     </div>
-                   </div>
+                 {/* Close button */}
+                 <div className="absolute top-6 right-6 pointer-events-auto">
+                   <button
+                     onClick={() => setHeartLabels([])}
+                     className="w-10 h-10 rounded-full bg-black/90 backdrop-blur-md border border-cardio-cyan/40 hover:bg-gray-900 flex items-center justify-center transition-colors shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                   >
+                     <X className="w-4 h-4 text-cardio-cyan" />
+                   </button>
                  </div>
                </div>
              )}
