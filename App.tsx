@@ -209,12 +209,20 @@ const App: React.FC = () => {
     setHeartLabels(labels);
   }, []);
 
+  // Force Graph tab when tutorial mode is enabled
+  useEffect(() => {
+    if (tutorialMode) {
+      setActiveTab('graph');
+    }
+  }, [tutorialMode]);
+
   // Loop Animation Frame
   useEffect(() => {
     let animationFrameId: number;
-    
+
     const animate = (time: number) => {
-      if (!isPlaying) {
+      // Pause if tutorial mode is active or not playing
+      if (!isPlaying || tutorialMode) {
           lastFrameTimeRef.current = time;
           animationFrameId = requestAnimationFrame(animate);
           return;
@@ -240,7 +248,7 @@ const App: React.FC = () => {
 
     animationFrameId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [isPlaying, beatTimestamps, stats.duration, cursorTimestamp]);
+  }, [isPlaying, tutorialMode, beatTimestamps, stats.duration, cursorTimestamp]);
 
   const handleCursorChange = (t: number) => {
       setCursorTimestamp(t);
@@ -287,17 +295,23 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-             {/* Tutorial Mode Toggle */}
+             {/* Tutorial Mode Toggle - Circular Button with Logo */}
              <button
-               onClick={() => setTutorialMode(!tutorialMode)}
-               className={`px-4 py-2 rounded-lg border transition-all flex items-center space-x-2 ${
+               onClick={() => {
+                 setTutorialMode(!tutorialMode);
+                 if (!tutorialMode) {
+                   setTutorialStep(0); // Reset to first step
+                   setIsPlaying(false); // Pause the feed
+                 }
+               }}
+               className={`w-12 h-12 rounded-full border-2 transition-all flex items-center justify-center relative overflow-hidden ${
                  tutorialMode
-                   ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
-                   : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600'
+                   ? 'border-emerald-500 bg-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                   : 'border-gray-700 bg-gray-900 hover:border-emerald-500/50 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]'
                }`}
+               title="Tutorial Mode"
              >
-               <GraduationCap className="w-4 h-4" />
-               <span className="text-xs font-medium uppercase tracking-wide">Tutorial Mode</span>
+               <GraduationCap className={`w-6 h-6 transition-colors ${tutorialMode ? 'text-emerald-400' : 'text-gray-400'}`} />
              </button>
           </div>
       </header>
@@ -311,11 +325,14 @@ const App: React.FC = () => {
             
             {/* Tab Navigation */}
             <div className="flex-none flex items-center border-b border-cardio-border bg-cardio-panel/50">
-                <button 
-                    onClick={() => setActiveTab('graph')}
+                <button
+                    onClick={() => !tutorialMode && setActiveTab('graph')}
+                    disabled={tutorialMode}
                     className={`flex-1 py-3 text-xs font-medium uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
-                        activeTab === 'graph' 
-                        ? 'bg-cardio-bg text-cardio-cyan border-b-2 border-cardio-cyan' 
+                        activeTab === 'graph'
+                        ? 'bg-cardio-bg text-cardio-cyan border-b-2 border-cardio-cyan'
+                        : tutorialMode
+                        ? 'text-gray-700 cursor-not-allowed border-b-2 border-transparent'
                         : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border-b-2 border-transparent'
                     }`}
                 >
@@ -323,11 +340,14 @@ const App: React.FC = () => {
                     <span>Graph</span>
                 </button>
                 <div className="w-px h-4 bg-cardio-border"></div>
-                <button 
-                    onClick={() => setActiveTab('stats')}
+                <button
+                    onClick={() => !tutorialMode && setActiveTab('stats')}
+                    disabled={tutorialMode}
                     className={`flex-1 py-3 text-xs font-medium uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
-                        activeTab === 'stats' 
-                        ? 'bg-cardio-bg text-purple-500 border-b-2 border-purple-500' 
+                        activeTab === 'stats'
+                        ? 'bg-cardio-bg text-purple-500 border-b-2 border-purple-500'
+                        : tutorialMode
+                        ? 'text-gray-700 cursor-not-allowed border-b-2 border-transparent'
                         : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border-b-2 border-transparent'
                     }`}
                 >
@@ -335,11 +355,14 @@ const App: React.FC = () => {
                     <span>Stats</span>
                 </button>
                 <div className="w-px h-4 bg-cardio-border"></div>
-                <button 
-                    onClick={() => setActiveTab('about')}
+                <button
+                    onClick={() => !tutorialMode && setActiveTab('about')}
+                    disabled={tutorialMode}
                     className={`flex-1 py-3 text-xs font-medium uppercase tracking-wider flex items-center justify-center space-x-2 transition-all ${
-                        activeTab === 'about' 
-                        ? 'bg-cardio-bg text-emerald-500 border-b-2 border-emerald-500' 
+                        activeTab === 'about'
+                        ? 'bg-cardio-bg text-emerald-500 border-b-2 border-emerald-500'
+                        : tutorialMode
+                        ? 'text-gray-700 cursor-not-allowed border-b-2 border-transparent'
                         : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 border-b-2 border-transparent'
                     }`}
                 >
@@ -368,6 +391,83 @@ const App: React.FC = () => {
                             />
                         </div>
                     </div>
+
+                    {/* Tutorial Dialog - Below Graph */}
+                    {tutorialMode && (
+                      <div className="flex-none bg-black/95 backdrop-blur-xl border-t-2 border-emerald-500/50 p-4 shadow-2xl shadow-emerald-500/10">
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-shrink-0">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                              tutorialSteps[tutorialStep].segment === 'p' ? 'bg-yellow-500/20 border-2 border-yellow-500' :
+                              tutorialSteps[tutorialStep].segment === 'qrs' ? 'bg-cyan-500/20 border-2 border-cyan-500' :
+                              tutorialSteps[tutorialStep].segment === 't' ? 'bg-purple-500/20 border-2 border-purple-500' :
+                              'bg-gray-500/20 border-2 border-gray-500'
+                            }`}>
+                              <Activity className={`w-6 h-6 ${
+                                tutorialSteps[tutorialStep].segment === 'p' ? 'text-yellow-500' :
+                                tutorialSteps[tutorialStep].segment === 'qrs' ? 'text-cyan-500' :
+                                tutorialSteps[tutorialStep].segment === 't' ? 'text-purple-500' :
+                                'text-gray-500'
+                              }`} />
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <h2 className="text-xl font-bold text-white">{tutorialSteps[tutorialStep].title}</h2>
+                              <span className="text-xs text-emerald-400 font-mono">Step {tutorialStep + 1} of {tutorialSteps.length}</span>
+                            </div>
+                            <p className="text-xs text-emerald-400 font-mono uppercase tracking-wide mb-2">{tutorialSteps[tutorialStep].description}</p>
+                            <p className="text-xs text-gray-300 leading-relaxed mb-3">{getSegmentDescription(tutorialSteps[tutorialStep].segment).description}</p>
+
+                            {/* Biological action description */}
+                            <div className="mb-3 p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                              <h3 className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide mb-1 flex items-center">
+                                <Heart className="w-3 h-3 mr-1" />
+                                Heart Action
+                              </h3>
+                              <p className="text-xs text-white">
+                                {tutorialSteps[tutorialStep].segment === 'p' && "The atria (upper chambers) are contracting, pushing blood into the ventricles below."}
+                                {tutorialSteps[tutorialStep].segment === 'qrs' && "The ventricles (lower chambers) are contracting powerfully, pumping blood to the lungs and body."}
+                                {tutorialSteps[tutorialStep].segment === 't' && "The ventricles are relaxing and refilling with blood from the atria, preparing for the next beat."}
+                              </p>
+                            </div>
+
+                            {/* Navigation Buttons */}
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+                                disabled={tutorialStep === 0}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                                  tutorialStep === 0
+                                    ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30'
+                                }`}
+                              >
+                                Previous
+                              </button>
+                              {tutorialStep < tutorialSteps.length - 1 ? (
+                                <button
+                                  onClick={() => setTutorialStep(tutorialStep + 1)}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30 transition-all"
+                                >
+                                  Next
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setTutorialMode(false);
+                                    setTutorialStep(0);
+                                  }}
+                                  className="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-black border-2 border-emerald-400 hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/50"
+                                >
+                                  Finish!
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                 </div>
 
                 {/* >>> STATS TAB <<< */}
@@ -565,77 +665,6 @@ const App: React.FC = () => {
                  />
              </div>
 
-             {/* Tutorial Mode Overlay */}
-             {tutorialMode && (
-               <div className="absolute top-6 left-6 right-6 bottom-20 z-20 pointer-events-none">
-                 <div className="bg-black/90 backdrop-blur-xl border-2 border-emerald-500/50 rounded-2xl p-6 shadow-2xl shadow-emerald-500/20">
-                   <div className="flex items-start space-x-4">
-                     <div className="flex-shrink-0">
-                       <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                         tutorialSteps[tutorialStep].segment === 'p' ? 'bg-yellow-500/20 border-2 border-yellow-500' :
-                         tutorialSteps[tutorialStep].segment === 'qrs' ? 'bg-cyan-500/20 border-2 border-cyan-500' :
-                         tutorialSteps[tutorialStep].segment === 't' ? 'bg-purple-500/20 border-2 border-purple-500' :
-                         'bg-gray-500/20 border-2 border-gray-500'
-                       }`}>
-                         <Activity className={`w-8 h-8 ${
-                           tutorialSteps[tutorialStep].segment === 'p' ? 'text-yellow-500' :
-                           tutorialSteps[tutorialStep].segment === 'qrs' ? 'text-cyan-500' :
-                           tutorialSteps[tutorialStep].segment === 't' ? 'text-purple-500' :
-                           'text-gray-500'
-                         }`} />
-                       </div>
-                     </div>
-                     <div className="flex-1">
-                       <div className="flex items-center justify-between mb-1">
-                         <h2 className="text-2xl font-bold text-white">{tutorialSteps[tutorialStep].title}</h2>
-                         <span className="text-sm text-emerald-400 font-mono">Step {tutorialStep + 1} of {tutorialSteps.length}</span>
-                       </div>
-                       <p className="text-sm text-emerald-400 font-mono uppercase tracking-wide mb-3">{tutorialSteps[tutorialStep].description}</p>
-                       <p className="text-sm text-gray-300 leading-relaxed">{getSegmentDescription(tutorialSteps[tutorialStep].segment).description}</p>
-
-                       {/* Biological action description */}
-                       <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                         <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wide mb-2 flex items-center">
-                           <Heart className="w-3 h-3 mr-1" />
-                           Heart Action
-                         </h3>
-                         <p className="text-xs text-white">
-                           {tutorialSteps[tutorialStep].segment === 'p' && "The atria (upper chambers) are contracting, pushing blood into the ventricles below."}
-                           {tutorialSteps[tutorialStep].segment === 'qrs' && "The ventricles (lower chambers) are contracting powerfully, pumping blood to the lungs and body."}
-                           {tutorialSteps[tutorialStep].segment === 't' && "The ventricles are relaxing and refilling with blood from the atria, preparing for the next beat."}
-                         </p>
-                       </div>
-
-                       {/* Navigation Buttons */}
-                       <div className="mt-4 flex items-center space-x-3 pointer-events-auto">
-                         <button
-                           onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
-                           disabled={tutorialStep === 0}
-                           className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                             tutorialStep === 0
-                               ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                               : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30'
-                           }`}
-                         >
-                           Previous Step
-                         </button>
-                         <button
-                           onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
-                           disabled={tutorialStep === tutorialSteps.length - 1}
-                           className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                             tutorialStep === tutorialSteps.length - 1
-                               ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                               : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30'
-                           }`}
-                         >
-                           Next Step
-                         </button>
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             )}
 
              {/* 3D Status Overlay */}
              <div className="absolute bottom-6 left-0 right-0 flex justify-center z-20 pointer-events-none">
@@ -651,23 +680,27 @@ const App: React.FC = () => {
                 </div>
              </div>
 
-             {/* Heart Labeling Diagram - Simplified and cleaner */}
+             {/* Heart Labeling Diagram - Improved and cleaner */}
              {heartLabels.length > 0 && (
                <div className="absolute inset-0 z-30 pointer-events-none">
                  {/* SVG for drawing clean leader lines */}
                  <svg className="absolute inset-0 w-full h-full pointer-events-none">
                    {heartLabels.map((label, idx) => {
-                     // Calculate offset position for label (radially outward from center)
-                     const centerX = typeof window !== 'undefined' ? (window.innerWidth * 0.5) / 2 : 400;
-                     const centerY = typeof window !== 'undefined' ? window.innerHeight / 2 : 300;
+                     // Calculate screen center for the 3D view (right half of screen)
+                     const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
+                     const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
+
+                     // Center is in the right half of the screen (3D view)
+                     const centerX = viewportWidth * 0.75; // 75% across (middle of right half)
+                     const centerY = viewportHeight / 2;
 
                      // Vector from center to label point
                      const dx = label.position2D.x - centerX;
                      const dy = label.position2D.y - centerY;
                      const distance = Math.sqrt(dx * dx + dy * dy);
 
-                     // Extend outward by 60px
-                     const extension = 60;
+                     // Extend outward by 80px for better spacing
+                     const extension = 80;
                      const labelX = label.position2D.x + (dx / distance) * extension;
                      const labelY = label.position2D.y + (dy / distance) * extension;
 
@@ -679,18 +712,18 @@ const App: React.FC = () => {
                            y1={label.position2D.y}
                            x2={labelX}
                            y2={labelY}
-                           stroke="rgba(255, 255, 255, 0.5)"
-                           strokeWidth="1"
+                           stroke="rgba(255, 255, 255, 0.6)"
+                           strokeWidth="1.5"
                            strokeLinecap="round"
                          />
                          {/* Dot at 3D point */}
                          <circle
                            cx={label.position2D.x}
                            cy={label.position2D.y}
-                           r="3"
-                           fill="rgba(255, 255, 255, 0.9)"
-                           stroke="rgba(0, 0, 0, 0.5)"
-                           strokeWidth="1"
+                           r="4"
+                           fill="rgba(6, 182, 212, 0.9)"
+                           stroke="rgba(255, 255, 255, 0.8)"
+                           strokeWidth="2"
                          />
                        </g>
                      );
@@ -699,14 +732,17 @@ const App: React.FC = () => {
 
                  {/* Labels - positioned radially from heart */}
                  {heartLabels.map((label, idx) => {
-                   const centerX = typeof window !== 'undefined' ? (window.innerWidth * 0.5) / 2 : 400;
-                   const centerY = typeof window !== 'undefined' ? window.innerHeight / 2 : 300;
+                   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
+                   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
+
+                   const centerX = viewportWidth * 0.75;
+                   const centerY = viewportHeight / 2;
 
                    const dx = label.position2D.x - centerX;
                    const dy = label.position2D.y - centerY;
                    const distance = Math.sqrt(dx * dx + dy * dy);
 
-                   const extension = 60;
+                   const extension = 80;
                    const labelX = label.position2D.x + (dx / distance) * extension;
                    const labelY = label.position2D.y + (dy / distance) * extension;
 
@@ -723,9 +759,9 @@ const App: React.FC = () => {
                          transform: isLeftSide ? 'translate(-100%, -50%)' : 'translate(0, -50%)',
                        }}
                      >
-                       {/* Clean label with subtle background */}
-                       <div className="bg-black/80 backdrop-blur-sm px-2 py-1 rounded border border-white/20">
-                         <div className="text-white text-xs font-medium tracking-wide whitespace-nowrap">
+                       {/* Clean label with enhanced styling */}
+                       <div className="bg-black/90 backdrop-blur-md px-3 py-1.5 rounded-lg border-2 border-cardio-cyan/50 shadow-lg shadow-cardio-cyan/20">
+                         <div className="text-white text-sm font-bold tracking-wide whitespace-nowrap">
                            {label.partInfo.name}
                          </div>
                        </div>
@@ -737,9 +773,9 @@ const App: React.FC = () => {
                  <div className="absolute top-6 right-6 pointer-events-auto">
                    <button
                      onClick={() => setHeartLabels([])}
-                     className="w-10 h-10 rounded-full bg-black/90 backdrop-blur-md border border-white/40 hover:bg-gray-900 flex items-center justify-center transition-colors"
+                     className="w-10 h-10 rounded-full bg-black/90 backdrop-blur-md border-2 border-white/40 hover:bg-gray-900 hover:border-cardio-cyan flex items-center justify-center transition-all shadow-lg"
                    >
-                     <X className="w-4 h-4 text-white" />
+                     <X className="w-5 h-5 text-white" />
                    </button>
                  </div>
                </div>
