@@ -498,52 +498,73 @@ function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels, curren
     if (onShowAllLabels) {
       const labels: HeartLabel[] = [];
 
-      // Sample representative meshes for labeling (to avoid too many labels)
-      const sampledMeshes = new Map<string, THREE.Mesh>();
+      // Priority categories for labeling (show main structures only)
+      const priorityCategories = new Map<string, THREE.Mesh>();
 
       heartMeshesRef.current.forEach((mesh) => {
         if (mesh.userData.partInfo) {
           const partInfo = mesh.userData.partInfo as HeartPartInfo;
-          const key = partInfo.name;
 
-          // FILTER: Only show outer structures (walls, arteries, veins, chambers)
-          // Exclude inner components like valves
-          const isOuterStructure =
-            partInfo.category.includes("Blood Vessel") ||
-            partInfo.category.includes("Chamber") ||
-            partInfo.category.includes("Wall") ||
-            partInfo.category.includes("Septum") ||
-            partInfo.category.includes("Muscle Tissue");
+          // Define key structures to label
+          let categoryKey: string | null = null;
 
-          // Keep one mesh per unique part name, only if it's an outer structure
-          if (isOuterStructure && !sampledMeshes.has(key)) {
-            sampledMeshes.set(key, mesh);
+          if (partInfo.category.includes("Chamber")) {
+            // For chambers, use specific chamber names
+            if (partInfo.name.includes("Right Atrium")) categoryKey = "Right Atrium";
+            else if (partInfo.name.includes("Left Atrium")) categoryKey = "Left Atrium";
+            else if (partInfo.name.includes("Right Ventricle")) categoryKey = "Right Ventricle";
+            else if (partInfo.name.includes("Left Ventricle")) categoryKey = "Left Ventricle";
+          } else if (partInfo.category.includes("Blood Vessel")) {
+            // Group blood vessels by type
+            if (partInfo.name.includes("Coronary Artery")) categoryKey = "Coronary Arteries";
+            else if (partInfo.name.includes("Coronary Vein")) categoryKey = "Coronary Veins";
+          }
+
+          // Only add if it's a priority category and not already added
+          if (categoryKey && !priorityCategories.has(categoryKey)) {
+            priorityCategories.set(categoryKey, mesh);
           }
         }
       });
 
-      // Calculate 2D positions for each unique part
-      sampledMeshes.forEach((mesh) => {
+      // Calculate 2D positions for each labeled structure
+      priorityCategories.forEach((mesh, categoryKey) => {
         const partInfo = mesh.userData.partInfo as HeartPartInfo;
 
-        // Get mesh center in world space
-        const boundingBox = new THREE.Box3().setFromObject(mesh);
-        const center = new THREE.Vector3();
-        boundingBox.getCenter(center);
+        // Get the mesh's world position (use center of geometry)
+        mesh.geometry.computeBoundingBox();
+        const boundingBox = mesh.geometry.boundingBox;
 
-        // Project to screen space
-        const vector = center.clone();
-        vector.project(camera);
+        if (boundingBox) {
+          const center = new THREE.Vector3();
+          boundingBox.getCenter(center);
 
-        // Convert to pixel coordinates
-        const x = (vector.x * 0.5 + 0.5) * size.width;
-        const y = (vector.y * -0.5 + 0.5) * size.height;
+          // Transform to world coordinates
+          mesh.localToWorld(center);
 
-        labels.push({
-          partInfo,
-          position2D: { x, y },
-          position3D: { x: center.x, y: center.y, z: center.z }
-        });
+          // Project to screen space
+          const vector = center.clone();
+          vector.project(camera);
+
+          // Check if point is in front of camera (not behind)
+          if (vector.z < 1) {
+            // Convert to pixel coordinates
+            const x = (vector.x * 0.5 + 0.5) * size.width;
+            const y = (vector.y * -0.5 + 0.5) * size.height;
+
+            // Only add if within reasonable screen bounds
+            if (x >= 0 && x <= size.width && y >= 0 && y <= size.height) {
+              labels.push({
+                partInfo: {
+                  ...partInfo,
+                  name: categoryKey // Use simplified category name
+                },
+                position2D: { x, y },
+                position3D: { x: center.x, y: center.y, z: center.z }
+              });
+            }
+          }
+        }
       });
 
       onShowAllLabels(labels);
