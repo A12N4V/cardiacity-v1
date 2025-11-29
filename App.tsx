@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import ECGPlot, { PointDetails } from './components/ECGPlot';
 import Heart3D, { HeartPartInfo, HeartLabel } from './components/Heart3D';
-import { Heart, Activity, BrainCircuit, Waves, Info, MonitorPlay, Crosshair, Play, Pause, ChartBar, Stethoscope, Zap, X } from 'lucide-react';
-import { ECGStatistics, getSegmentDescription, getHRVStatus } from './lib/ecgUtils';
+import { Heart, Activity, BrainCircuit, Waves, Info, MonitorPlay, Crosshair, Play, Pause, ChartBar, Stethoscope, Zap, X, GraduationCap } from 'lucide-react';
+import { ECGStatistics, getSegmentDescription, getHRVStatus, WaveSegment } from './lib/ecgUtils';
 
 /**
  * Complex 3D Logo Animation Component
@@ -166,12 +166,12 @@ const Logo3D: React.FC = () => {
 
 const App: React.FC = () => {
   const [beatTimestamps, setBeatTimestamps] = useState<number[]>([]);
-  const [stats, setStats] = useState<ECGStatistics>({ 
-    bpm: 0, rrIntervals: [], sdnn: 0, rmssd: 0, qrsDuration: 0, duration: 10, minRR: 0, maxRR: 0 
+  const [stats, setStats] = useState<ECGStatistics>({
+    bpm: 0, rrIntervals: [], sdnn: 0, rmssd: 0, qrsDuration: 0, duration: 10, minRR: 0, maxRR: 0
   });
   const [activeBeat, setActiveBeat] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  
+
   // Tab State: 'graph' | 'stats' | 'about'
   const [activeTab, setActiveTab] = useState<'graph' | 'stats' | 'about'>('graph');
 
@@ -181,6 +181,9 @@ const App: React.FC = () => {
 
   // Heart part labeling state
   const [heartLabels, setHeartLabels] = useState<HeartLabel[]>([]);
+
+  // Tutorial mode state
+  const [tutorialMode, setTutorialMode] = useState(false);
 
   // Animation Refs
   const lastFrameTimeRef = useRef<number>(0);
@@ -276,10 +279,18 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-             <div className={`hidden md:flex px-3 py-1 rounded-full border ${isPlaying ? 'border-green-900 bg-green-900/20' : 'border-gray-800 bg-gray-900'} items-center space-x-2`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`}></div>
-                <span className="text-[10px] font-mono text-gray-300 uppercase tracking-wide">{isPlaying ? 'LIVE FEED' : 'STANDBY'}</span>
-             </div>
+             {/* Tutorial Mode Toggle */}
+             <button
+               onClick={() => setTutorialMode(!tutorialMode)}
+               className={`px-4 py-2 rounded-lg border transition-all flex items-center space-x-2 ${
+                 tutorialMode
+                   ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+                   : 'border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600'
+               }`}
+             >
+               <GraduationCap className="w-4 h-4" />
+               <span className="text-xs font-medium uppercase tracking-wide">Tutorial Mode</span>
+             </button>
           </div>
       </header>
 
@@ -539,8 +550,54 @@ const App: React.FC = () => {
                    beatTimes={beatTimestamps.map(t => Date.now() + (t - cursorTimestamp) * 1000)}
                    isPlaying={isPlaying}
                    onShowAllLabels={handleShowAllLabels}
+                   currentSegment={pointDetails?.segment as WaveSegment}
+                   tutorialMode={tutorialMode}
                  />
              </div>
+
+             {/* Tutorial Mode Overlay */}
+             {tutorialMode && segmentInfo && (
+               <div className="absolute top-6 left-6 right-6 z-20 pointer-events-none">
+                 <div className="bg-black/90 backdrop-blur-xl border-2 border-emerald-500/50 rounded-2xl p-6 shadow-2xl shadow-emerald-500/20">
+                   <div className="flex items-start space-x-4">
+                     <div className="flex-shrink-0">
+                       <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                         pointDetails?.segment === 'p' ? 'bg-yellow-500/20 border-2 border-yellow-500' :
+                         pointDetails?.segment === 'qrs' ? 'bg-cyan-500/20 border-2 border-cyan-500' :
+                         pointDetails?.segment === 't' ? 'bg-purple-500/20 border-2 border-purple-500' :
+                         'bg-gray-500/20 border-2 border-gray-500'
+                       }`}>
+                         <Activity className={`w-8 h-8 ${
+                           pointDetails?.segment === 'p' ? 'text-yellow-500' :
+                           pointDetails?.segment === 'qrs' ? 'text-cyan-500' :
+                           pointDetails?.segment === 't' ? 'text-purple-500' :
+                           'text-gray-500'
+                         }`} />
+                       </div>
+                     </div>
+                     <div className="flex-1">
+                       <h2 className="text-2xl font-bold text-white mb-1">{segmentInfo.title}</h2>
+                       <p className="text-sm text-emerald-400 font-mono uppercase tracking-wide mb-3">{segmentInfo.short}</p>
+                       <p className="text-sm text-gray-300 leading-relaxed">{segmentInfo.description}</p>
+
+                       {/* Biological action description */}
+                       <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                         <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wide mb-2 flex items-center">
+                           <Heart className="w-3 h-3 mr-1" />
+                           Heart Action
+                         </h3>
+                         <p className="text-xs text-white">
+                           {pointDetails?.segment === 'p' && "The atria (upper chambers) are contracting, pushing blood into the ventricles below."}
+                           {pointDetails?.segment === 'qrs' && "The ventricles (lower chambers) are contracting powerfully, pumping blood to the lungs and body."}
+                           {pointDetails?.segment === 't' && "The ventricles are relaxing and refilling with blood from the atria, preparing for the next beat."}
+                           {pointDetails?.segment === 'baseline' && "The heart is in a resting phase between beats, with no major electrical activity."}
+                         </p>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             )}
 
              {/* 3D Status Overlay */}
              <div className="absolute bottom-6 left-0 right-0 flex justify-center z-20 pointer-events-none">
@@ -556,124 +613,99 @@ const App: React.FC = () => {
                 </div>
              </div>
 
-             {/* Heart Labeling Diagram */}
-             {heartLabels.length > 0 && (() => {
-               // Get viewport dimensions
-               const viewportWidth = typeof window !== 'undefined' ? window.innerWidth * 0.5 : 800; // 50% for right panel
-               const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
-
-               // Calculate smart label positions (textbook style)
-               const labelPositions = heartLabels.map((label, idx) => {
-                 const total = heartLabels.length;
-
-                 // Determine which side of the viewport to place the label
-                 // Distribute labels around the perimeter in a grid-like pattern
-                 const angle = (idx / total) * 2 * Math.PI;
-
-                 // Calculate distance from 3D point to edge of viewport
-                 let labelX, labelY;
-                 const margin = 80; // Margin from viewport edge
-                 const lineLength = 120; // Minimum line length
-
-                 // Quadrant-based positioning (cleaner distribution)
-                 if (angle < Math.PI / 4 || angle >= 7 * Math.PI / 4) {
-                   // Right side
-                   labelX = viewportWidth - margin;
-                   labelY = label.position2D.y;
-                 } else if (angle >= Math.PI / 4 && angle < 3 * Math.PI / 4) {
-                   // Bottom side
-                   labelX = label.position2D.x;
-                   labelY = viewportHeight - margin;
-                 } else if (angle >= 3 * Math.PI / 4 && angle < 5 * Math.PI / 4) {
-                   // Left side
-                   labelX = margin;
-                   labelY = label.position2D.y;
-                 } else {
-                   // Top side
-                   labelX = label.position2D.x;
-                   labelY = margin;
-                 }
-
-                 // Clamp positions to stay within viewport
-                 labelX = Math.max(margin, Math.min(viewportWidth - margin, labelX));
-                 labelY = Math.max(margin, Math.min(viewportHeight - margin, labelY));
-
-                 return { labelX, labelY };
-               });
-
-               return (
-                 <div className="absolute inset-0 z-30 pointer-events-none">
-                   {/* SVG for drawing sleek leader lines */}
-                   <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                     {heartLabels.map((label, idx) => {
-                       const { labelX, labelY } = labelPositions[idx];
-
-                       return (
-                         <g key={`line-group-${idx}`}>
-                           {/* Sleek leader line */}
-                           <line
-                             x1={label.position2D.x}
-                             y1={label.position2D.y}
-                             x2={labelX}
-                             y2={labelY}
-                             stroke="rgba(255, 255, 255, 0.6)"
-                             strokeWidth="1.5"
-                             strokeLinecap="round"
-                           />
-                           {/* Small dot at 3D point */}
-                           <circle
-                             cx={label.position2D.x}
-                             cy={label.position2D.y}
-                             r="2.5"
-                             fill="rgba(255, 255, 255, 0.9)"
-                             stroke="rgba(255, 255, 255, 0.4)"
-                             strokeWidth="1"
-                           />
-                         </g>
-                       );
-                     })}
-                   </svg>
-
-                   {/* Labels (sleek minimal style - white only) */}
+             {/* Heart Labeling Diagram - Simplified and cleaner */}
+             {heartLabels.length > 0 && (
+               <div className="absolute inset-0 z-30 pointer-events-none">
+                 {/* SVG for drawing clean leader lines */}
+                 <svg className="absolute inset-0 w-full h-full pointer-events-none">
                    {heartLabels.map((label, idx) => {
-                     const { labelX, labelY } = labelPositions[idx];
+                     // Calculate offset position for label (radially outward from center)
+                     const centerX = typeof window !== 'undefined' ? (window.innerWidth * 0.5) / 2 : 400;
+                     const centerY = typeof window !== 'undefined' ? window.innerHeight / 2 : 300;
 
-                     // Determine text alignment based on position
-                     const isLeftSide = labelX < viewportWidth / 2;
-                     const textAlign = isLeftSide ? 'left' : 'right';
+                     // Vector from center to label point
+                     const dx = label.position2D.x - centerX;
+                     const dy = label.position2D.y - centerY;
+                     const distance = Math.sqrt(dx * dx + dy * dy);
+
+                     // Extend outward by 60px
+                     const extension = 60;
+                     const labelX = label.position2D.x + (dx / distance) * extension;
+                     const labelY = label.position2D.y + (dy / distance) * extension;
 
                      return (
-                       <div
-                         key={`label-${idx}`}
-                         className="absolute pointer-events-none"
-                         style={{
-                           left: `${labelX}px`,
-                           top: `${labelY}px`,
-                           transform: isLeftSide ? 'translate(10px, -50%)' : 'translate(-100%, -50%)',
-                           textAlign: textAlign,
-                           maxWidth: '220px'
-                         }}
-                       >
-                         {/* Sleek white label - only component name */}
-                         <div className="text-white text-base font-light tracking-wide leading-tight drop-shadow-[0_4px_16px_rgba(0,0,0,1)]">
+                       <g key={`line-group-${idx}`}>
+                         {/* Clean leader line */}
+                         <line
+                           x1={label.position2D.x}
+                           y1={label.position2D.y}
+                           x2={labelX}
+                           y2={labelY}
+                           stroke="rgba(255, 255, 255, 0.5)"
+                           strokeWidth="1"
+                           strokeLinecap="round"
+                         />
+                         {/* Dot at 3D point */}
+                         <circle
+                           cx={label.position2D.x}
+                           cy={label.position2D.y}
+                           r="3"
+                           fill="rgba(255, 255, 255, 0.9)"
+                           stroke="rgba(0, 0, 0, 0.5)"
+                           strokeWidth="1"
+                         />
+                       </g>
+                     );
+                   })}
+                 </svg>
+
+                 {/* Labels - positioned radially from heart */}
+                 {heartLabels.map((label, idx) => {
+                   const centerX = typeof window !== 'undefined' ? (window.innerWidth * 0.5) / 2 : 400;
+                   const centerY = typeof window !== 'undefined' ? window.innerHeight / 2 : 300;
+
+                   const dx = label.position2D.x - centerX;
+                   const dy = label.position2D.y - centerY;
+                   const distance = Math.sqrt(dx * dx + dy * dy);
+
+                   const extension = 60;
+                   const labelX = label.position2D.x + (dx / distance) * extension;
+                   const labelY = label.position2D.y + (dy / distance) * extension;
+
+                   // Determine alignment based on which side of center
+                   const isLeftSide = labelX < centerX;
+
+                   return (
+                     <div
+                       key={`label-${idx}`}
+                       className="absolute pointer-events-none"
+                       style={{
+                         left: `${labelX}px`,
+                         top: `${labelY}px`,
+                         transform: isLeftSide ? 'translate(-100%, -50%)' : 'translate(0, -50%)',
+                       }}
+                     >
+                       {/* Clean label with subtle background */}
+                       <div className="bg-black/80 backdrop-blur-sm px-2 py-1 rounded border border-white/20">
+                         <div className="text-white text-xs font-medium tracking-wide whitespace-nowrap">
                            {label.partInfo.name}
                          </div>
                        </div>
-                     );
-                   })}
+                     </div>
+                   );
+                 })}
 
-                   {/* Close button */}
-                   <div className="absolute top-6 right-6 pointer-events-auto">
-                     <button
-                       onClick={() => setHeartLabels([])}
-                       className="w-10 h-10 rounded-full bg-black/90 backdrop-blur-md border border-white/40 hover:bg-gray-900 flex items-center justify-center transition-colors"
-                     >
-                       <X className="w-4 h-4 text-white" />
-                     </button>
-                   </div>
+                 {/* Close button */}
+                 <div className="absolute top-6 right-6 pointer-events-auto">
+                   <button
+                     onClick={() => setHeartLabels([])}
+                     className="w-10 h-10 rounded-full bg-black/90 backdrop-blur-md border border-white/40 hover:bg-gray-900 flex items-center justify-center transition-colors"
+                   >
+                     <X className="w-4 h-4 text-white" />
+                   </button>
                  </div>
-               );
-             })()}
+               </div>
+             )}
         </div>
 
       </main>

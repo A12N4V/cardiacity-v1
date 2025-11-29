@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import gsap from "gsap";
+import { WaveSegment } from "../lib/ecgUtils";
 
 interface Heart3DProps {
   beatTimes: number[];
@@ -13,6 +14,8 @@ interface Heart3DProps {
   onCameraUpdate?: (position: { x: number; y: number; z: number }) => void;
   onPartClick?: (partInfo: HeartPartInfo | null) => void;
   onShowAllLabels?: (labels: HeartLabel[]) => void;
+  currentSegment?: WaveSegment;
+  tutorialMode?: boolean;
 }
 
 export interface HeartLabel {
@@ -237,7 +240,7 @@ function getHeartPartInfo(meshName: string, filename: string): HeartPartInfo {
 }
 
 // Electrical impulse field component
-function ElectricalImpulse({ isPlaying, beatTimes }: { isPlaying: boolean; beatTimes: number[] }) {
+function ElectricalImpulse({ isPlaying, beatTimes, currentSegment, tutorialMode }: { isPlaying: boolean; beatTimes: number[]; currentSegment?: WaveSegment; tutorialMode?: boolean }) {
   const impulseRef = useRef<THREE.Mesh>(null);
   const lastBeatTimeRef = useRef<number>(0);
   const animationRef = useRef<gsap.core.Timeline | null>(null);
@@ -374,7 +377,7 @@ function ElectricalImpulse({ isPlaying, beatTimes }: { isPlaying: boolean; beatT
 }
 
 // Heart model component with animation
-function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels }: Heart3DProps) {
+function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels, currentSegment, tutorialMode }: Heart3DProps) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.Group>(null);
   const lastBeatTimeRef = useRef<number>(0);
@@ -384,6 +387,10 @@ function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels }: Hear
   const [hoveredMesh, setHoveredMesh] = useState<THREE.Mesh | null>(null);
   const heartMeshesRef = useRef<THREE.Mesh[]>([]);
   const { camera, size } = useThree();
+
+  // Categorized meshes for segment-based animations
+  const atriaMeshesRef = useRef<THREE.Mesh[]>([]);
+  const ventriclesMeshesRef = useRef<THREE.Mesh[]>([]);
 
   // Load all heart OBJ models
   useEffect(() => {
@@ -456,6 +463,14 @@ function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels }: Hear
 
               // Store mesh reference for labeling
               heartMeshesRef.current.push(child);
+
+              // Categorize meshes for segment-based animation
+              const partInfo = child.userData.partInfo as HeartPartInfo;
+              if (partInfo.category.includes("Atrium")) {
+                atriaMeshesRef.current.push(child);
+              } else if (partInfo.category.includes("Ventricle")) {
+                ventriclesMeshesRef.current.push(child);
+              }
             }
           });
 
@@ -498,6 +513,43 @@ function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels }: Hear
       );
     });
   }, []);
+
+  // Segment-based highlighting for tutorial mode
+  useEffect(() => {
+    if (!tutorialMode || !heartModel) return;
+
+    // Reset all meshes to normal emissive intensity
+    heartMeshesRef.current.forEach((mesh) => {
+      const material = mesh.material as THREE.MeshStandardMaterial;
+      material.emissiveIntensity = 0.1;
+    });
+
+    // Highlight based on current segment
+    let meshesToHighlight: THREE.Mesh[] = [];
+
+    if (currentSegment === 'p') {
+      // P-wave: Atria are contracting
+      meshesToHighlight = atriaMeshesRef.current;
+    } else if (currentSegment === 'qrs') {
+      // QRS: Ventricles are contracting
+      meshesToHighlight = ventriclesMeshesRef.current;
+    } else if (currentSegment === 't') {
+      // T-wave: Ventricles are relaxing (dim highlight)
+      meshesToHighlight = ventriclesMeshesRef.current;
+    }
+
+    // Apply highlight
+    meshesToHighlight.forEach((mesh) => {
+      const material = mesh.material as THREE.MeshStandardMaterial;
+      if (currentSegment === 't') {
+        // T-wave: gentler glow (relaxation)
+        material.emissiveIntensity = 0.25;
+      } else {
+        // P-wave and QRS: stronger glow (contraction)
+        material.emissiveIntensity = 0.5;
+      }
+    });
+  }, [currentSegment, tutorialMode, heartModel]);
 
   // Heartbeat animation function
   const triggerHeartbeat = () => {
@@ -685,7 +737,12 @@ function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels }: Hear
         <primitive object={heartModel} />
       </group>
       {/* Electrical impulse field */}
-      <ElectricalImpulse isPlaying={isPlaying || false} beatTimes={beatTimes} />
+      <ElectricalImpulse
+        isPlaying={isPlaying || false}
+        beatTimes={beatTimes}
+        currentSegment={currentSegment}
+        tutorialMode={tutorialMode}
+      />
     </group>
   );
 }
@@ -724,7 +781,7 @@ function CameraTracker({ onCameraUpdate }: { onCameraUpdate?: (pos: { x: number;
 }
 
 // Main 3D scene
-function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpdate, onPartClick, onShowAllLabels }: Heart3DProps) {
+function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpdate, onPartClick, onShowAllLabels, currentSegment, tutorialMode }: Heart3DProps) {
   const camPos = cameraPosition || { x: 0, y: 0, z: 300 };
   const camTarget = cameraTarget || { x: 0, y: 0, z: 0 };
 
@@ -771,14 +828,21 @@ function Scene({ beatTimes, isPlaying, cameraPosition, cameraTarget, onCameraUpd
 
       {/* Heart Model */}
       <Suspense fallback={<LoadingPlaceholder />}>
-        <HeartModel beatTimes={beatTimes} isPlaying={isPlaying} onPartClick={onPartClick} onShowAllLabels={onShowAllLabels} />
+        <HeartModel
+          beatTimes={beatTimes}
+          isPlaying={isPlaying}
+          onPartClick={onPartClick}
+          onShowAllLabels={onShowAllLabels}
+          currentSegment={currentSegment}
+          tutorialMode={tutorialMode}
+        />
       </Suspense>
     </>
   );
 }
 
 // Main component export
-export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, cameraTarget, onCameraUpdate, onPartClick, onShowAllLabels }: Heart3DProps) {
+export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, cameraTarget, onCameraUpdate, onPartClick, onShowAllLabels, currentSegment, tutorialMode }: Heart3DProps) {
   return (
     <div className="w-full h-full">
       <Canvas
@@ -800,6 +864,8 @@ export default function Heart3D({ beatTimes, isPlaying = false, cameraPosition, 
           onCameraUpdate={onCameraUpdate}
           onPartClick={onPartClick}
           onShowAllLabels={onShowAllLabels}
+          currentSegment={currentSegment}
+          tutorialMode={tutorialMode}
         />
       </Canvas>
     </div>
