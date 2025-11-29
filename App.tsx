@@ -184,6 +184,14 @@ const App: React.FC = () => {
 
   // Tutorial mode state
   const [tutorialMode, setTutorialMode] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  // Tutorial steps configuration
+  const tutorialSteps = [
+    { segment: 'p' as WaveSegment, title: 'P-Wave', description: 'Atrial Depolarization' },
+    { segment: 'qrs' as WaveSegment, title: 'QRS Complex', description: 'Ventricular Depolarization' },
+    { segment: 't' as WaveSegment, title: 'T-Wave', description: 'Ventricular Repolarization' },
+  ];
 
   // Animation Refs
   const lastFrameTimeRef = useRef<number>(0);
@@ -348,13 +356,15 @@ const App: React.FC = () => {
                     <div className="flex-1 bg-cardio-panel overflow-hidden relative">
                         {/* Always mounted to preserve WebGL context */}
                         <div className={`w-full h-full ${activeTab === 'graph' ? 'visible' : 'invisible'}`}>
-                             <ECGPlot 
-                                onBeatsDetected={handleBeatsDetected} 
+                             <ECGPlot
+                                onBeatsDetected={handleBeatsDetected}
                                 onStatsUpdate={handleStatsUpdate}
                                 onError={(e) => console.error(e)}
                                 cursorTimestamp={cursorTimestamp}
                                 onCursorChange={handleCursorChange}
                                 onPointDetailsChange={setPointDetails}
+                                tutorialMode={tutorialMode}
+                                tutorialSegment={tutorialMode ? tutorialSteps[tutorialStep].segment : undefined}
                             />
                         </div>
                     </div>
@@ -550,35 +560,38 @@ const App: React.FC = () => {
                    beatTimes={beatTimestamps.map(t => Date.now() + (t - cursorTimestamp) * 1000)}
                    isPlaying={isPlaying}
                    onShowAllLabels={handleShowAllLabels}
-                   currentSegment={pointDetails?.segment as WaveSegment}
+                   currentSegment={tutorialMode ? tutorialSteps[tutorialStep].segment : (pointDetails?.segment as WaveSegment)}
                    tutorialMode={tutorialMode}
                  />
              </div>
 
              {/* Tutorial Mode Overlay */}
-             {tutorialMode && segmentInfo && (
-               <div className="absolute top-6 left-6 right-6 z-20 pointer-events-none">
+             {tutorialMode && (
+               <div className="absolute top-6 left-6 right-6 bottom-20 z-20 pointer-events-none">
                  <div className="bg-black/90 backdrop-blur-xl border-2 border-emerald-500/50 rounded-2xl p-6 shadow-2xl shadow-emerald-500/20">
                    <div className="flex items-start space-x-4">
                      <div className="flex-shrink-0">
                        <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                         pointDetails?.segment === 'p' ? 'bg-yellow-500/20 border-2 border-yellow-500' :
-                         pointDetails?.segment === 'qrs' ? 'bg-cyan-500/20 border-2 border-cyan-500' :
-                         pointDetails?.segment === 't' ? 'bg-purple-500/20 border-2 border-purple-500' :
+                         tutorialSteps[tutorialStep].segment === 'p' ? 'bg-yellow-500/20 border-2 border-yellow-500' :
+                         tutorialSteps[tutorialStep].segment === 'qrs' ? 'bg-cyan-500/20 border-2 border-cyan-500' :
+                         tutorialSteps[tutorialStep].segment === 't' ? 'bg-purple-500/20 border-2 border-purple-500' :
                          'bg-gray-500/20 border-2 border-gray-500'
                        }`}>
                          <Activity className={`w-8 h-8 ${
-                           pointDetails?.segment === 'p' ? 'text-yellow-500' :
-                           pointDetails?.segment === 'qrs' ? 'text-cyan-500' :
-                           pointDetails?.segment === 't' ? 'text-purple-500' :
+                           tutorialSteps[tutorialStep].segment === 'p' ? 'text-yellow-500' :
+                           tutorialSteps[tutorialStep].segment === 'qrs' ? 'text-cyan-500' :
+                           tutorialSteps[tutorialStep].segment === 't' ? 'text-purple-500' :
                            'text-gray-500'
                          }`} />
                        </div>
                      </div>
                      <div className="flex-1">
-                       <h2 className="text-2xl font-bold text-white mb-1">{segmentInfo.title}</h2>
-                       <p className="text-sm text-emerald-400 font-mono uppercase tracking-wide mb-3">{segmentInfo.short}</p>
-                       <p className="text-sm text-gray-300 leading-relaxed">{segmentInfo.description}</p>
+                       <div className="flex items-center justify-between mb-1">
+                         <h2 className="text-2xl font-bold text-white">{tutorialSteps[tutorialStep].title}</h2>
+                         <span className="text-sm text-emerald-400 font-mono">Step {tutorialStep + 1} of {tutorialSteps.length}</span>
+                       </div>
+                       <p className="text-sm text-emerald-400 font-mono uppercase tracking-wide mb-3">{tutorialSteps[tutorialStep].description}</p>
+                       <p className="text-sm text-gray-300 leading-relaxed">{getSegmentDescription(tutorialSteps[tutorialStep].segment).description}</p>
 
                        {/* Biological action description */}
                        <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
@@ -587,11 +600,36 @@ const App: React.FC = () => {
                            Heart Action
                          </h3>
                          <p className="text-xs text-white">
-                           {pointDetails?.segment === 'p' && "The atria (upper chambers) are contracting, pushing blood into the ventricles below."}
-                           {pointDetails?.segment === 'qrs' && "The ventricles (lower chambers) are contracting powerfully, pumping blood to the lungs and body."}
-                           {pointDetails?.segment === 't' && "The ventricles are relaxing and refilling with blood from the atria, preparing for the next beat."}
-                           {pointDetails?.segment === 'baseline' && "The heart is in a resting phase between beats, with no major electrical activity."}
+                           {tutorialSteps[tutorialStep].segment === 'p' && "The atria (upper chambers) are contracting, pushing blood into the ventricles below."}
+                           {tutorialSteps[tutorialStep].segment === 'qrs' && "The ventricles (lower chambers) are contracting powerfully, pumping blood to the lungs and body."}
+                           {tutorialSteps[tutorialStep].segment === 't' && "The ventricles are relaxing and refilling with blood from the atria, preparing for the next beat."}
                          </p>
+                       </div>
+
+                       {/* Navigation Buttons */}
+                       <div className="mt-4 flex items-center space-x-3 pointer-events-auto">
+                         <button
+                           onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+                           disabled={tutorialStep === 0}
+                           className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                             tutorialStep === 0
+                               ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                               : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30'
+                           }`}
+                         >
+                           Previous Step
+                         </button>
+                         <button
+                           onClick={() => setTutorialStep(Math.min(tutorialSteps.length - 1, tutorialStep + 1))}
+                           disabled={tutorialStep === tutorialSteps.length - 1}
+                           className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                             tutorialStep === tutorialSteps.length - 1
+                               ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                               : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30'
+                           }`}
+                         >
+                           Next Step
+                         </button>
                        </div>
                      </div>
                    </div>

@@ -239,143 +239,6 @@ function getHeartPartInfo(meshName: string, filename: string): HeartPartInfo {
   };
 }
 
-// Electrical impulse field component
-function ElectricalImpulse({ isPlaying, beatTimes, currentSegment, tutorialMode }: { isPlaying: boolean; beatTimes: number[]; currentSegment?: WaveSegment; tutorialMode?: boolean }) {
-  const impulseRef = useRef<THREE.Mesh>(null);
-  const lastBeatTimeRef = useRef<number>(0);
-  const animationRef = useRef<gsap.core.Timeline | null>(null);
-
-  // Create impulse field geometry (from atria to ventricles)
-  const impulseGeometry = new THREE.SphereGeometry(30, 32, 32);
-
-  useEffect(() => {
-    if (impulseRef.current) {
-      // Start invisible
-      impulseRef.current.scale.set(0.1, 0.1, 0.1);
-      (impulseRef.current.material as THREE.MeshBasicMaterial).opacity = 0;
-    }
-  }, []);
-
-  const triggerImpulse = () => {
-    if (!impulseRef.current) return;
-
-    // Cancel any existing animation
-    if (animationRef.current) {
-      animationRef.current.kill();
-    }
-
-    const material = impulseRef.current.material as THREE.MeshBasicMaterial;
-    const mesh = impulseRef.current;
-
-    // Reset - Start RED at atria
-    mesh.scale.set(0.3, 0.3, 0.3);
-    mesh.position.set(0, 20, 0); // Start at atria (top)
-    material.opacity = 0.8;
-    material.color.setHex(0xFF0000); // Start RED
-
-    // Create impulse wave animation
-    const timeline = gsap.timeline();
-
-    // Wave 1: Atrial depolarization (RED)
-    timeline.to(mesh.scale, {
-      x: 0.6,
-      y: 0.6,
-      z: 0.6,
-      duration: 0.1,
-      ease: "power2.out"
-    });
-
-    timeline.to(material, {
-      opacity: 0.7,
-      duration: 0.1
-    }, "<");
-
-    // Wave 2: Travel through AV node - Transition RED to DARK BLUE
-    timeline.to(mesh.position, {
-      y: 0,
-      duration: 0.15,
-      ease: "power1.inOut"
-    });
-
-    timeline.to(material.color, {
-      r: 0.0,  // Red channel: 1.0 → 0.0
-      g: 0.0,  // Green channel: 0.0 → 0.0
-      b: 0.8,  // Blue channel: 0.0 → 0.8 (Dark Blue)
-      duration: 0.15
-    }, "<");
-
-    // Wave 3: Ventricular depolarization (DARK BLUE)
-    timeline.to(mesh.scale, {
-      x: 1.2,
-      y: 1.2,
-      z: 1.2,
-      duration: 0.2,
-      ease: "power2.out"
-    });
-
-    timeline.to(mesh.position, {
-      y: -15,
-      duration: 0.2,
-      ease: "power2.out"
-    }, "<");
-
-    // Continue darkening to deep blue
-    timeline.to(material.color, {
-      b: 0.5,  // Darken blue further
-      duration: 0.2
-    }, "<");
-
-    // Wave 4: Fade out
-    timeline.to(material, {
-      opacity: 0,
-      duration: 0.15,
-      ease: "power1.in"
-    });
-
-    timeline.to(mesh.scale, {
-      x: 0.1,
-      y: 0.1,
-      z: 0.1,
-      duration: 0.15
-    }, "<");
-
-    animationRef.current = timeline;
-  };
-
-  // Monitor beat times and trigger impulse
-  useFrame(() => {
-    if (!isPlaying || beatTimes.length === 0) return;
-
-    const currentTime = Date.now();
-    const nextBeat = beatTimes.find(time => time > lastBeatTimeRef.current && time <= currentTime + 50);
-
-    if (nextBeat && nextBeat !== lastBeatTimeRef.current) {
-      lastBeatTimeRef.current = nextBeat;
-      triggerImpulse();
-    }
-  });
-
-  useEffect(() => {
-    return () => {
-      if (animationRef.current) {
-        animationRef.current.kill();
-      }
-    };
-  }, []);
-
-  return (
-    <mesh ref={impulseRef} geometry={impulseGeometry}>
-      <meshBasicMaterial
-        color={0xFF0000}
-        transparent
-        opacity={0}
-        side={THREE.DoubleSide}
-        blending={THREE.AdditiveBlending}
-      />
-    </mesh>
-  );
-}
-
 // Heart model component with animation
 function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels, currentSegment, tutorialMode }: Heart3DProps) {
   const groupRef = useRef<THREE.Group>(null);
@@ -718,12 +581,7 @@ function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels, curren
   }, []);
 
   if (!heartModel) {
-    return (
-      <mesh>
-        <sphereGeometry args={[20, 32, 32]} />
-        <meshStandardMaterial color="#FF3333" wireframe />
-      </mesh>
-    );
+    return null; // No loading sphere, just wait for the model
   }
 
   return (
@@ -736,33 +594,13 @@ function HeartModel({ beatTimes, isPlaying, onPartClick, onShowAllLabels, curren
       >
         <primitive object={heartModel} />
       </group>
-      {/* Electrical impulse field */}
-      <ElectricalImpulse
-        isPlaying={isPlaying || false}
-        beatTimes={beatTimes}
-        currentSegment={currentSegment}
-        tutorialMode={tutorialMode}
-      />
     </group>
   );
 }
 
-// Loading placeholder
+// Loading placeholder - Simple and minimal
 function LoadingPlaceholder() {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.5;
-    }
-  });
-
-  return (
-    <mesh ref={meshRef}>
-      <sphereGeometry args={[20, 32, 32]} />
-      <meshStandardMaterial color="#FF3333" wireframe />
-    </mesh>
-  );
+  return null; // No visual placeholder, just let it load
 }
 
 // Camera position tracker
